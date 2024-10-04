@@ -1,0 +1,113 @@
+SIINEOS 2.0.0
+=============
+
+* Release date: 2020-03-19
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-armhf-update-v2.0.0.raucb>`_
+* `Image download <https://download.inhub.de/siineos/images/siineos-armhf-disk-v2.0.0.img.gz>`_
+
+SIINEOS
+-------
+
+* General:
+	- Base system updated to Debian GNU/Linux 10.3 release
+	- Added `usbtop` and `lsof` utilities
+	- Revised LED mappings and blink sequences, e.g. indicate access to flash memory and make RGB LED programmable via InCore apps
+	- Increased USB gadget announced power consumption to 400 mA
+	- Strip more unused files from the filesystem image to improve size and performance
+	- Allow QML apps to listen on TCP ports < 1024 (e.g. for Modbus TCP server)
+	- Reduce power consumption and thermal emissions of hardware by dynamically scaling CPU frequency based on workload
+* Kernel:
+	- Switched to 5.4.x LTS series
+	- Updated to 5.4.26
+	- Updated Device Tree files for 5.4
+	- Fixed PMIC communication issue on HUB-GM100
+	- Enabled ondemand CPU frequency scaling governor
+* Docker:
+	- Updated to 19.03.8
+* Debian security updates:
+	- sudo: https://www.debian.org/security/2020/dsa-4614
+
+InCore
+------
+
+* Foundation:
+	- ByteArray: added initial implementation
+	- Component: added initial implementation
+	- DockerContainer: added `networkMode` property
+	- DockerContainer: ignore networks for non-bridge mode
+	- DockerContainer: add more error messages
+	- Gather: added `deferUpdatesWhileDeserializing` property to improve performance
+	- Gather: added `deferUpdatesWhileRepeatersUpdating` property to improve performance
+	- Gather: use QML component for `typeFilter` to avoid instantiation of filter object
+	- IoDevice: added `autoOpen` property
+	- IoDevice: added `bytesAvailable` property
+	- IoDevice: added `readyRead` signal
+	- IoDevice: open device in read/write mode
+	- Measurement: added properties and mechanisms for specializations in QML and drop Frequency, Pressure, RotationalSpeed, Torque and Voltage
+	- NetworkInterface: do not write empty entries to network files
+	- Object: never serialize parent objects
+	- Repeater: added `updating` property
+	- Select: added `defaultValue` property
+	- Select: added debug messages
+	- SerialPort: moved to IO module
+	- System: added `reboot()` method
+	- System: fixed reading bootloader version
+* CloudOfThings:
+	- Adopted Foundation API changes in documentation
+	- CloudOfThingsClient: various improvements in internal management
+	- CloudOfThingsClient: improved reboot robustness
+	- CloudOfThingsClient: added CloudOfThingsRemoteConnectionManager which manages remote access from the *Cloud of Things* user interface
+	- CloudOfThingsMeasurementWriter: added error if group names contains forbidden characters such as `,`, `.` and `$`
+	- CloudOfThingsTransport: added initial implementation to encapsulate the communication layer in a separate thread
+	- CloudOfThingsTransport: moved properties from client to transport (`tenantForMQTT`, `cleanSessionMQTT`, `state`, `autoConnect`, `keepAlive`, `sendBufferInterval`, `requestOperationsIntervalMQTT`)
+* Database:
+	- Adopted Foundation API changes in documentation
+* HTTP:
+	- Adopted Foundation API changes in documentation
+	- Fixed logging category for debug messages
+* IO:
+	- Adopted Foundation API changes in documentation
+	- CanBus: added initial implementation
+	- CanFilter: added initial implementation
+	- CanFrame: added initial implementation
+	- CanPipe: added initial implementation
+	- DigitalIO: prepared driver for HUB-GM200 device
+	- FtdiI2cBus: switched backend to libmpsse
+	- FtdiI2cBus: fixed timing issues
+	- I2cBus: make generation of start/stop conditions configurable 
+	- I2cEeprom: added initial implementation
+	- LED: added indices and made object functional
+	- SerialPort: added `usbLocation` property
+	- SerialPort: added `builtinRS485PortName()` method
+	- SerialPort: cache port information to improve performance
+	- SerialPortBus: added initial implementation
+	- SerialPortManager: optimized SerialPort population
+	- Sht3x: added initial implementation
+* Modbus:
+	- Adopted Foundation API changes in documentation
+	- ModbusDevice: added initial implementation based on ModbusClient
+	- ModbusRtuSlave: added initial implementation
+	- ModbusServer: added initial implementation
+	- ModbusTcpServer: added initial implementation
+	- ModbusRegister: ignore slave errors when not polling
+	- ModbusRegister: ignore NULL bytes when converting to string
+	- ModbusRegister: improved and fixed various data type conversions
+	- ModbusRegister: properly handle data of type double
+* MQTT:
+	- Adopted Foundation API changes in documentation
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 5.4.26.1
+* Qt 5.12.8.1
+* InCore 2.0.0
+* RAUC 1.2.1
+* Docker 19.03.8.1
+* FreeTDS 1.1.24.1
+* ModemManager 1.10.9.1
+* ModemManagerQt 5.68.0.1
+* Solid 5.68.0.1
+* WPA 2.9.11.1
+
