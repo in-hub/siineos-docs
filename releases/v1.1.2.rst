@@ -1,0 +1,53 @@
+SIINEOS 1.1.2
+=============
+
+* Release date: 2019-12-21
+
+SIINEOS
+-------
+
+* General:
+	- Dropped legacy CRDA support
+	- Backported WPA support package (wpa_supplicant 2.9)
+* Kernel:
+	- Updated to 4.19.88
+	- Disabled CRDA support
+	- Build in TUN support
+	- Build in netfilter core
+	- Load wireless regulatory database without certificate
+	- Clean up DT for GM200
+* FreeTDS:
+	- Updated to 1.1.24
+* Debian security updates: <none>
+
+InCore
+------
+
+* Foundation:
+	- Application: added `commandLineArguments` property
+	- DockerService: added `registry`, `username` and `password` properties
+	- DockerService: added `login()` and `logout()` methods
+	- Extension: added support for native app extensions
+	- OpenVpnClientService: fixed configurationName property initialization
+	- OpenVpnClientService: fixed service start/stop permission
+	- Process: added `started()` and `finished()` signals
+	- Process: added `exitCode` property
+* CloudOfThings:
+	- CoTDeviceManager: made `id` field a 64 bit integer
+	- CoTTemplateManager: made `id` field a 64 bit integer
+* IO:
+	- GenericIODriverGM200: fixed pin control
+* Mqtt:
+	- MqttPublication: fixed superfluous publications for SubmitOnAnyChange
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 4.19.88.1
+* Qt 5.12.6.1
+* InCore 1.1.2
+* RAUC 1.2.1
+* Docker 19.03.5.1
+* ModemManagerQt 5.64.0.1
+* Solid 5.64.0.1
