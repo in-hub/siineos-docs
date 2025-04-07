@@ -1,0 +1,68 @@
+SIINEOS 2.5.2
+=============
+
+* Release date: 2022-01-31
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.5.2.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.5.2.raucb>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - Added technology preview of SMAC (SIINEOS Management Console), accessible via HTTP at `/smac`
+    - Added support for custom Certificate Authorities which allows establishing encrypted connections to internal services (HTTP, MQTT, WebSockets)
+    - Refactored backend of WirelessNetworkInterface, providing better reliability and allowing InCore apps to retrieve a list of available wireless networks
+* Kernel:
+    - Updated to 5.4.175
+    - Enabled PWM LED support
+    - Enabled PWM driver for i.MX-based devices
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 20.10.12 / containerd 1.4.12
+    - FreeTDS 1.3.6
+    - InCore 2.5.2
+    - WebApp Engine 2.5.2
+    - Qt 5.12.12.1
+* Debian security updates:
+    - icu: https://www.debian.org/security/2021/dsa-5014
+    - policykit-1: https://www.debian.org/security/2022/dsa-5059
+
+InCore
+------
+
+* CLI:
+    - Added ``jsonrpc`` module
+    - Fixed application exit code for the ``run`` module
+* Foundation:
+    - Application: added ``customCaCertificates`` property
+    - Application: added ``processEnvironment`` property
+    - Application: added ``standardInput`` property
+    - Application: set process name at OS level based on ``name`` property
+    - DataObjectView: added ``EditableCombobox`` and ``PasswordField`` enumeration values
+    - JsonRpcClient: added ``port`` property
+    - JsonRpcServer: fixed crash occurring under rare circumstances
+    - MobileNetworkInterface: fix occasional modem initialization failure by scanning for modems every 10 s until a modem has been found
+    - NetworkInterface: set ``view.orderIndex`` property for ``enabled`` and ``hardwareAddress`` items
+    - Object: added ``serializeProperties()`` method
+    - Object: properly serialize/deserialize variant properties when assigned enum constants
+    - UpdateManager: require at least 200 MB available space in the download storage
+    - WirelessNetworkInterface: refactored backend to use ``wpa_supplicant`` via D-Bus for better reliability and extended functionalities
+    - WirelessNetworkInterface: added ``availableNetworks`` property and ``scanAvailableNetworks()`` method
+    - WirelessNetworkInterface: don't log error in configuration check if SSID is empty
+* CloudOfThings:
+   - CloudOfThingsMeasurementWriter: adopted internal API change to submit multiple buffered measurements at once
+   - CloudOfThingsMeasurementWriter: fixed crash when submitting measurements
+* Database:
+    - MeasurementBufferDatabase: fixed reading back SI prefix
+    - MeasurementDatabase: added ``objectId`` field
+    - MeasurementDatabase: advanced internal implementation to store multiple measurements via one function call
+* Modbus:
+    - ModbusSlave: added ``RegisterTypeError`` error which is set when trying to read/write from/to ``ModbusRegister`` objects with invalid/unset type
+* Mqtt:
+    - MqttMeasurementWriter: added initial implementation
+* WebApp:
+    - Make ``LinearGradient`` and ``OpacityMask`` types available through the GraphicalEffects import
+    - Load ``main.qml`` only after engine has been initialized to improve application startup error reporting
+    - Set QML context for the ``WebAppCore`` singleton to fix translation file loading
+    - Added login and logout icons
+    - Build with Qt 6.2.3 and Emscripten SDK 3.1.2

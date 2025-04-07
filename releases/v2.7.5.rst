@@ -1,0 +1,39 @@
+SIINEOS 2.7.5
+=============
+
+* Release date: 2023-06-28
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.7.5.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.7.5.raucb>`_
+
+SIINEOS
+-------
+
+* Changes:
+    - SMAC: added support for security modes and policies to OPC UA client, allowing to establish encrypted connections to OPC UA servers
+    - SMAC: added *Delta* processing step to signal processing of I/O connections
+    - SMAC: added possibility to implement persistent counters (whose values are restored after restarting the device) via synthetic signals
+    - SMAC: added JSON parsing support to MQTT client
+    - SMAC: added option to MQTT client signals allowing to specify data type explicitly
+    - SMAC: added update mode *Periodic* to aggregation processing step of I/O signals
+    - SMAC: don't show system bus connection error on successful reconnect
+    - SMAC: fixed synchronization issues with hardware-level edge detection on digital inputs
+    - SMAC: create admin users for InGraf and MaDoW app automatically
+    - SMAC: added option to automatically start Docker engine on system start so that user-defined containers with appropriate restart policy are started automatically as well
+    - SMAC: added LED device identification action to the *System* / *Device* configuration page
+    - SMAC: always show switches for link-local addressing and multicast DNS in Ethernet configuration pages
+    - SMAC: always reset search filter fields in signal selection pages of I/O connection and synthetic signal wizards when opening an I/O connection or synthetic signal a 2nd time
+    - InCore: ``OpcUaClientConnection``: added ``setupEncryption()`` method
+    - InCore: ``OpcUaServerSecurity``: fixed access control with security policy None and certificates being set
+    - InCore: ``MqttTopic``: automatically update ``data`` property when changing data type
+* Kernel:
+    - Updated to 5.4.248
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 24.0.2 / containerd 1.6.21
+    - FreeTDS 1.3.18
+    - InCore 2.7.5
+    - Qt 5.15.10.1 with SQLite 3.42.0
+    - open62541 1.3.6-3
+    - RAUC 1.9
+    - WebApp Engine 2.7.5
+* Debian security updates: <none>
