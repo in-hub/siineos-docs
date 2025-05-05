@@ -1,0 +1,52 @@
+SIINEOS 2.5.3
+=============
+
+* Release date: 2022-03-09
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.5.3.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.5.3.raucb>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - SMAC: show real system status data and system metrics in the *Overview* page
+    - SMAC: added new pages *Cellular* and *Monitoring*
+    - SMAC: date/time and timezone can now be configured in the *System settings* page
+    - SMAC: an OpenVPN client instance can now be configured in the *System settings* page
+* Kernel:
+    - Updated to 5.4.183
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 20.10.12 / containerd 1.4.13
+    - FreeTDS 1.3.9
+    - InCore 2.5.3
+    - WebApp Engine 2.5.3
+    - Qt 5.12.12.2
+* Debian security updates: <NONE>
+
+InCore
+------
+
+* Foundation:
+    - Application: added ``dumpStackTrace()`` method
+    - Application: renamed ``dumpBacktrace()`` method to ``dumpInternalBacktrace()``
+    - Core: catch various system signals such as ``SIGSEGV`` and dump QML stack trace + internal backtrace
+    - DateTime: fixed timezone handling in the ``parseString()`` method
+    - MobileNetworkInterface: fixed and extended ``orderIndex`` properties of ConfigItem views
+    - NetworkConfiguration: only tell system to reload network configuration once after all interfaces have been configured
+    - NetworkConfiguration: make network configuration files group-writable
+    - NetworkInterface: always update the ``hardwareAddress`` property dynamically
+    - NetworkInterface: added ``trafficRx``/``trafficTx`` properties
+    - NetworkInterface: adopt ``ntp`` property from ``WiredNetworkInterface`` so it can be set for all kind of network interfaces
+    - System: added ``cpuUsage`` property
+    - System: added ``memoryTotal``/``memoryAvailable`` properties
+* Database:
+    - DatabaseSqlQuery: include error-causing query string in debug messages
+* IO:
+    - Keyboard: increase event buffer to prevent losing events when the CPU is very busy
+* Mqtt:
+    - MqttClient: refactored error handling
+    - MqttClient: fixed crash when reconnecting with empty an hostname after a having connected to a valid hostname successfully before
+* WebApp:
+    - Update InCore components to 2.5.3
+    - Build with Qt 6.2.4 and Emscripten SDK 3.1.7

@@ -1,0 +1,47 @@
+SIINEOS 2.7.6
+=============
+
+* Release date: 2023-07-28
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.7.6.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.7.6.raucb>`_
+
+SIINEOS
+-------
+
+* Changes:
+    - SMAC: greatly improved performance of mathematical expression evaluation leading to significantly lower CPU usage for signal processing and calculating synthetic signals
+    - SMAC: fix bug where synthetic signal counters were not initialized properly
+    - SMAC: added masquerading support to the port forwarding page in the firewall module
+    - SMAC: fixed broken DHCP server functionality for Ethernet 2
+    - SMAC: added support for writing to Modbus registers (static value or dynamically via signal connection)
+    - SMAC: refactored I/Os of HUB-GM200 provider to make them and their behavior match the physical interfaces
+    - SMAC: improved user interface for various signal configuration pages
+    - SMAC: delay Docker engine start to work around firewall configuration issues
+    - SMAC: implemented Modbus register access for data type DOUBLE
+    - Cloud of Things Connector: fixed broken SSL connection to cloud (regression in 2.7.5)
+    - Cloud of Things Connector, Azure IoT Connector, Flexplorer: fixed high CPU usage issues
+    - OPC UA server app: fixed broken server restart when stopping and starting app
+    - InCore: ``Application``: manually load all SSL root certificates at start to fix SSL/TLS connection issues
+    - InCore: ``Mail``: replaced ``ssmtp``-based implementation by ``simple-mail`` library
+    - InCore: ``ModbusRegister``: added dedicated handling of the DOUBLE data type
+    - InCore: ``ModbusRegister``: optimized data conversions for better performance
+    - InCore: ``Mqtt*Subscription``: added ``enabled`` property
+    - InCore: ``MqttWildcardSubscription``: added data object mapping mechanism
+    - InCore: ``MqttWildcardSubscription``: added ``updateTopics`` property
+    - InCore: ``MqttWildcardSubscription``: fixed memory leak
+    - InCore: ``NftAddressTranslation``: made masquerading more universal
+    - InCore: ``OpcUaServerValueNode``: added ``timestamp`` property
+    - InCore: ``OpcUaServer``: fixed open62541 backend shutdown when destructed/stopped
+* Kernel:
+    - Updated to 5.4.251
+    - Enabled more Docker networking related features (VXLAN, various Netfilter features, IP tunneling)
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 24.0.5 / containerd 1.6.21
+    - FreeTDS 1.3.18
+    - InCore 2.7.6
+    - Qt 5.15.10.2 with SQLite 3.42.0
+    - open62541 1.3.6-8
+    - RAUC 1.10
+    - WebApp Engine 2.7.6
+* Debian security updates: <none>
