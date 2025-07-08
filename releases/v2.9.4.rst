@@ -1,0 +1,37 @@
+SIINEOS 2.9.4
+=============
+
+* Release date: 2025-08-XX
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.9.4-rc1.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.9.4-rc1.raucb>`_
+
+SIINEOS
+-------
+
+* Improvements / bugfixes:
+	- OPC UA client: Byte/SByte values are now interpreted as numbers
+	- OPC UA client: improved performance, reliability and visual appearence of node browsing dialog
+	- MQTT client: replace auto-discovery mechanism with new topic browsing dialog similar to OPC UA, making the process of adding MQTT topics much more comfortable
+	- MQTT client: added configuration option for MQTT protocol version to also support MQTT 5
+	- MQTT client: fixed non-working TLS connections on startup
+	- Alert destinations: make MQTT broker port configurable
+	- Alert signals: fixed loading polarity setting of binary source signals
+	- HUB-GM100/GM200/IO100: do not used fixed measurement units (mA/V) for analog input signals
+	- HUB-EN200: added signals containing sums of all phases for energy and power signals
+	- Reload licenses after system time has been synchronized to fix licensing issues
+	- Added support for latest HUB-SE100 hardware revision
+	- Enabled security extensions support for the storage partition, fixing issues when downloading special Docker containers
+* Components:
+	- Bootloader 2021.07.9 (not installed/updated automatically)
+	- Linux Kernel 5.4.295
+	- Docker 25.0.5 / containerd 1.6.31
+	- FreeTDS 1.4.26
+	- InCore 2.9.4
+	- Qt 5.15.17 with SQLite 3.49.2
+	- open62541 1.4.12-1
+	- RAUC 1.13.0
+	- WebApp Engine 2.9.4
+* Debian security updates:
+	- https://www.freexian.com/lts/extended/updates/ela-1430-1-vim/
+	- https://www.freexian.com/lts/extended/updates/ela-1452-1-glibc/
+	- https://www.freexian.com/lts/extended/updates/ela-1476-1-sudo/
