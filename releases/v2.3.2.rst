@@ -1,0 +1,48 @@
+SIINEOS 2.3.2
+=============
+
+* Release date: 2021-04-21
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-armhf-update-v2.3.2.raucb>`_
+* `Image download <https://download.inhub.de/siineos/images/siineos-armhf-disk-v2.3.2.img.gz>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - Added OPC UA server support via ``OpcUaServer`` and related objects
+    - 250% overall performance improvement in WebApp Engine
+* General:
+    - Base system updated to Debian GNU/Linux 10.9 release
+    - Internal SQLite implementation in Qt updated to 3.35.5
+    - Added CAN utilities (``canbusload``, ``candump``, ``cangen`` and ``cansend``)
+* Kernel:
+    - Updated to 5.4.114
+* Components:
+    - Updated Docker to 20.10.6
+    - Updated FreeTDS to 1.2.20
+    - Updated InCore to 2.3.2
+    - Updated QtBase to 5.12.11.5
+    - Updated WPA to 2.9.21.1
+* Debian security updates:
+    - openssl: https://www.debian.org/security/2021/dsa-4875
+
+InCore
+------
+
+* Foundation:
+    - NftAddressTranslation: fixed SNAT by only seting input interface for prerouting/DNAT rule
+    - NftRule: fixed IPv6 support by prefixing source/destination addresses with correct address family
+* Mqtt:
+    - MqttObjectPublication: added first implementation (still in draft stage)
+    - MqttPublication/MqttSubscription: don't require an ``MqttClient`` object to be a direct parent 
+    - MqttPublication: fixed missing ``publish()`` call if client is already connected and ``autoPublish`` is ``true``
+    - MqttSubscription: fix missing ``subscribe()`` call if client is already connected and ``autoSubscribe`` is ``true``
+    - MqttTopic: supply converted data in ``data`` property if data type is specified via ``dataType`` property
+* OpcUa:
+    - OpcUaServer, OpcUaServerNamespace, OpcUaServerMethodNode, OpcUaServerValueNode: added first implementation (still in TP stage)
+    - OpcUaClient: added ``Client`` prefix to several client-related objects (e.g. ``OpcUaMethodNode`` → ``OpcUaClientMethodNode``, ``OpcUaValueNode`` → ``OpcUaClientValueNode`` etc.)
+* WebApp:
+    - Build with Emscripten SDK 2.0.17 and improved optimization flags
+    - Added another workaround to start main event loop properly 
+    - Integrated all changes from InCore.Foundation and InCore.Mqtt
+    - Integrated latest fixes and backports for the underlying Qt 5.15 libraries 

@@ -1,0 +1,42 @@
+SIINEOS 2.9.1
+=============
+
+* Release date: 2025-04-23
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.9.1.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.9.1.raucb>`_
+
+SIINEOS
+-------
+
+* New features:
+    - Communication LEDs can now be assigned to network interfaces, serial ports or bus interfaces
+    - Added ``apps-reset`` and ``tb-lfc-reset`` commands to ``siineos-cli``
+    - SIGNL4 app now supports sending heartbeat messages and indicating connectivity status via status LEDs
+* Notable changes:
+    - For Ethernet 1/2, link-local addressing and multicast DNS are now enabled per default on fresh installations as well as in configuration mode *None*
+* Improvements / bugfixes:
+    - Improved licensing status handling of apps (fixes unreliable behavior of SIGNL4 and TOSIBOX Lock for Container apps in some cases)
+    - Improved boot order of system services to shorten boot time
+    - Improved and fixed LED trigger control
+    - Improved voltage and current calculation accuracy for HUB-EN200 devices
+    - Improved configuration of 1-phase and 3-phase mains for HUB-EN200 devices
+    - Fixed broken alert forwarding to apps (such as SIGNL4) after modifying alert destinations
+    - Fixed slow shutdown/reboot caused by bug in RNGD
+    - Fixed scaling issue in raw signal Modbus registers of HUB-EN200 devices
+    - Force flushing write cache after submitting data to local database
+    - Retrieve device ID from bootloader environment if no Ethernet interface is available
+    - Improved support for HUB-VM102 devices and vmSys app
+    - Show device or host name in browser tab title
+    - Added support for new hardware revision of HUB-SE100
+    - Fixed crash when deleting MqttWildcardSubscription objects
+* Components:
+    - Bootloader 2021.07.9 (not installed/updated automatically)
+    - Linux Kernel 5.4.291
+    - Docker 25.0.5 / containerd 1.6.31
+    - FreeTDS 1.4.26
+    - InCore 2.9.1
+    - Qt 5.15.16.2 with SQLite 3.49.1
+    - open62541 1.4.11-1
+    - RAUC 1.13.0
+    - WebApp Engine 2.9.1
+* Debian security updates: <none>

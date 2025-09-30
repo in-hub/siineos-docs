@@ -1,0 +1,30 @@
+SIINEOS 2.9.5
+=============
+
+* Release date: 2025-09-30
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.9.5.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.9.5.raucb>`_
+
+SIINEOS
+-------
+
+* Improvements / bugfixes:
+	- Fixed alert rules with repetition to properly stop when alert condition no longer is met
+	- Improved firewall configuration for TOSIBOX Lock-for-Container app to properly work on devices with slower CPUs
+	- Improved appearence of file dialogs in web apps
+	- Added I/O signal data types UINT8/INT8 (unsigned/signed byte)
+* Components:
+	- Bootloader 2021.07.10 (not installed/updated automatically)
+	- Linux Kernel 5.4.299
+	- Docker 25.0.5 / containerd 1.6.31
+	- FreeTDS 1.4.26
+	- InCore 2.9.5
+	- Qt 5.15.17 with SQLite 3.50.3
+	- open62541 1.4.13-1
+	- RAUC 1.13.0
+	- VictoriaMetrics 1.124.0
+	- WebApp Engine 2.9.5
+* Debian security updates:
+	- https://www.freexian.com/lts/extended/updates/ela-1495-1-gnutls28/
+	- https://www.freexian.com/lts/extended/updates/ela-1508-1-udisks2/
+	- https://www.freexian.com/lts/extended/updates/ela-1522-1-pam/
