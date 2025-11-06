@@ -1,0 +1,40 @@
+SIINEOS 2.8.2
+=============
+
+* Release date: 2024-09-10
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.8.2.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.8.2.raucb>`_
+
+SIINEOS
+-------
+
+* Changes:
+    - Added new page to display storage usage details
+    - Added option to configure the Modbus RTU inter frame delay in Modbus client I/O units
+    - Added certificate authentication support to OPC UA client
+    - Added support for security policy Aes256Sha256RsaPss to OPC UA client
+    - Added more security/encryption options to OPC UA client
+    - Added option to change byte order in S7 PLC connector
+    - Added byte array value conversion to OPC UA Server
+    - Fixed server certificate verification in OPC UA client
+    - Fixed system updates on IMX6ULL-based devices due to memory constraints
+    - Fixed measurement value calculation for Sensirion SPS30 sensor
+    - Fixed Wi-fi names not being displayed properly in dropdown menu
+    - Fixed device tree configuration on IMX6ULL-based devices
+    - Improved support for HUB-EN200 board (phase naming, added phase N) and backplane bus integration
+    - Improved backplane bus support for HUB-IO100 board (PIN assignment information) and backplane bus integration
+    - Improved VictoriaMetrics integration
+    - Improved logging of OPC UA Server app
+    - Don't request wpa_supplicant service start if no wireless network interface is attached
+    - Hide Docker-based apps when running SIINEOS Light
+* Components:
+    - Bootloader 2021.07.9 (not installed/updated automatically)
+    - Docker 25.0.5 / containerd 1.6.33
+    - FreeTDS 1.3.18
+    - InCore 2.8.2
+    - Qt 5.15.14.2 with SQLite 3.46.0
+    - open62541 1.3.12-1
+    - RAUC 1.11.3
+    - VictoriaMetrics 1.93.16
+    - WebApp Engine 2.8.2
+* Debian security updates: <none>
