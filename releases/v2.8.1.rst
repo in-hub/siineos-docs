@@ -1,0 +1,41 @@
+SIINEOS 2.8.1
+=============
+
+* Release date: 2024-07-17
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.8.1.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.8.1.raucb>`_
+
+SIINEOS
+-------
+
+* Changes:
+    - Added initial version of ``siineos-cli`` tool to perform operations such as resetting Grafana password, all SMAC settings or the whole storage partition
+    - Added advanced option to configure MQTT keep alive interval in MQTT client I/O units
+    - Added advanced option to allow incoming connections on the mobile network interface
+    - Added option to change the backplane bus address of HUB-EN100 devices
+    - Added advanced options to use custom local/remote TSAP parameters in the S7 connector
+    - Added support to read one-dimensional arrays to OPC/UA connector
+    - Extended licensing module to support additional product size and version properties
+    - Improved support for HUB-IO100 board
+    - Improved support for HUB-EN200 board
+    - Improved license checks and messages
+    - Fixed high CPU usage issue in both backend and frontend when many messages were appended to the system journal frequently
+    - Fixed rack/slot number parameters not being used properly in the S7 connector (restores S7-300 support)
+    - Fixed crash in the S7 connector when writing signals while no connection has been established
+    - Fixed I/O signal values being published on the system bus twice each time
+    - Fixed input of measurement units
+    - Fixed MQTT client signals not being updated after connection to the broker was lost and reestablished
+    - Fixed sometimes missing I/O unit specific settings when opening I/O unit page the first time
+    - Improved 3GPP registration state handling in the mobile network management module
+    - Improved HTTP status code handling in ``HttpRequest`` object
+    - NumCorder: added retain option for input fields
+* Components:
+    - Bootloader 2021.07.9 (not installed/updated automatically)
+    - Docker 25.0.5 / containerd 1.6.33
+    - FreeTDS 1.3.18
+    - InCore 2.8.1
+    - Qt 5.15.14.1 with SQLite 3.46.0
+    - open62541 1.3.11-1
+    - RAUC 1.11.3
+    - WebApp Engine 2.8.1
+* Debian security updates: <none>
