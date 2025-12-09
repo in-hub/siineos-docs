@@ -1,0 +1,63 @@
+SIINEOS 2.3.1
+=============
+
+* Release date: 2021-03-15
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-armhf-update-v2.3.1.raucb>`_
+* `Image download <https://download.inhub.de/siineos/images/siineos-armhf-disk-v2.3.1.img.gz>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - Added TCP server support via ``TcpServer`` object
+    - Added support for MBIM-based LTE modems and refactored connection/bearer management for better reliability and performance
+    - Added support for JS callbacks to ``JsonRpcClient`` object
+    - Added USB printer support via ``UsbPrinter`` object
+    - Added support for automatic explicit data type conversion in MQTT topics
+    - Added possibility to configure custom network routes via new ``NetworkRoute`` object
+    - Added WebSockets support to InCore WebApp Engine via ``WebSocket`` object
+* General:
+    - Internal SQLite implementation in Qt updated to 3.35.0
+    - Updated wireless regulatory database to version 2020-12-20
+* Kernel:
+    - Updated to 5.4.105
+    - Enabled USB printer support
+    - Enabled CDC MBIM support
+    - Enabled advanced overlayfs features with tmpfs
+* Components:
+    - Updated Containerd to 1.4.4
+    - Updated Docker to 20.10.5
+    - Updated InCore to 2.3.1
+    - Updated ModemManager to 1.14.12 and dropped QMI support
+    - Updated QtBase to 5.12.11.4
+    - Updated QtDeclarative to 5.12.11.3
+* Debian security updates:
+    - libzstd: https://www.debian.org/security/2021/dsa-4859 (does not affect SIINEOS or any of its components)
+    - openssl: https://www.debian.org/security/2021/dsa-4855 (does not affect SIINEOS or any of its components)
+
+InCore
+------
+
+* Foundation:
+    - DataObject: update ``data`` before emitting the ``timestampChanged()`` signal 
+    - Gather: improved ``typeFilter`` to better handle different inheritance cases for QML objects
+    - IoDevice: added missing activation of ``isOpenChanged()`` signal
+    - JsonRpcClient: added support for JS callbacks to all methods to replace previous callback-like signals
+    - MobileNetworkInterface: added ``authenticationType`` property
+    - MobileNetworkInterface: added ``deviceManufacturer`` property
+    - MobileNetworkInterface: prefer IPv4+IPv6 configuration over IPv6 or IPv4 only
+    - MobileNetworkInterface: refactored connection/bearer management for better reliability and performance
+    - MobileNetworkInterface: added support for sending SMS to multiple numbers in one call
+    - NetworkInterface: added ``routes`` property and new ``NetworkRoute`` object
+    - NftFlow: fixed broken handling of the ``protocol`` property
+    - TcpServer: added initial implementation
+* IO:
+    - Keyboard, KeyboardManager: refactored device management and fixed permission issue
+    - UsbPrinter: added initial implementation
+* Mqtt:
+    - MqttTopic: explicitely convert received MQTT message to ``data`` property if ``dataType`` property is set (e.g. the string ``"false"`` is not treated as a "non-null" value and therefore no longer evaluates to ``true`` if ``dataType`` is ``MqttTopic.Boolean``)
+* WebApp:
+    - Integrated ``WebSocket`` and ``Counter`` objects
+    - Integrated all changes from InCore.Foundation and InCore.Mqtt
+    - Integrated latest fixes and backports for the underlying Qt 5.15 libraries 
+    - Improved visual appearence of loading screen

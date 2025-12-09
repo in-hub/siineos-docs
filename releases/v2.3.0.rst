@@ -1,0 +1,84 @@
+SIINEOS 2.3.0
+=============
+
+* Release date: 2021-02-11
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-armhf-update-v2.3.0.raucb>`_
+* `Image download <https://download.inhub.de/siineos/images/siineos-armhf-disk-v2.3.0.img.gz>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - Added technology preview of InCore WebApp Engine
+    - Added OPC/UA support through InCore.OpcUa module
+    - Added MQTT wildcard subscription support via MqttWildcardSubscription object
+    - Added MQTT over Websockets support in MqttBroker and MqttClient objects
+    - Added TCP/UDP connection support via TcpSocket/UdpSocket objects
+    - Added Websockets support via WebSocket/WebSocketDevice objects
+    - Added support for USB HID based barcode scanners via Keyboard/KeyboardManager objects
+    - Updated Docker to 20.10 release series
+* General:
+    - Base system updated to Debian GNU/Linux 10.8 release
+    - Internal SQLite implementation in Qt updated to 3.34.1
+    - nginx: report cached files to expire after 5 minutes
+    - Fixed ``update-siineos`` script to properly install development snapshots
+* Kernel:
+    - Updated to 5.4.97
+    - Enabled USB HID support
+    - Added support for Backplane Bus on HUB-GM200 devices
+    - Dropped unused CAN2 support for HUB-GM200 devices
+* Components:
+    - Added QtOpcUa 5.12.11.1
+    - Added InCore.OpcUa 2.3.0
+    - Added InCore.WebApp 2.3.0
+    - Updated Containerd to 1.4.3
+    - Updated Docker to 20.10.3
+    - Updated FreeTDS to 1.2.18
+    - Updated InCore to 2.3.0
+    - Updated ModemManagerQt to 5.78.0.1
+    - Updated QtBase to 5.12.11.3
+    - Updated RAUC to 1.5.1
+    - Updated Solid to 5.78.0.1
+* Debian security updates:
+    - p11-kit: https://www.debian.org/security/2021/dsa-4822
+    - sudo: https://www.debian.org/security/2021/dsa-4839
+
+InCore
+------
+
+* Foundation:
+    - DataObjectWriter: added signals ``submitted()`` and ``truncated()``
+    - IoDevice: added ``canReadLine`` property
+    - IoDevice: added ``lineAvailableForRead()`` signal
+    - IoDevice: added ``readLine()`` method
+    - IpSocket, TcpSocket, UdpSocket: added initial implementation
+    - JsonRpcClient: fixed memory leak in error case
+    - IoDevice: add method ``flush()`` to replace ``sync()`` in most cases
+    - WebSocket, WebSocketDevice: added initial implementation
+    - NetworkInterface: added error codes ``DeviceNotReady``, ``InvalidAddressError``, ``EmptyMessageError``, ``MessageCreateError``, ``MessageSendError`` and ``MessageDeleteError``
+    - MobileNetworkInterface: refactored mechanisms for sending text messages to replace the ``Sms`` object
+    - MobileNetworkInterface: added support for receiving text messages
+* CloudOfThings:
+    - CoTMeasurementWriter: added support for new ``submitted()`` and ``truncated()`` signals 
+* Database:
+    - DatabaseTable: added support for new ``submitted()`` and ``truncated()`` signals
+    - DatabaseSqlQuery: added ``lastInsertedId`` property
+* IO:
+    - SerialPort: reimplement ``IoDevice.flush()`` method effectively dropping the previously existing return value
+    - SerialPort: added support for builtin RS485 on HUB-GM200 devices
+    - Keyboard, KeyboardManager: added initial implementation
+* Modbus:
+    - ModbusBackplaneMaster: added initial implementation
+* Mqtt:
+    - MqttBroker: added ``websocketsPort`` property
+    - MqttBroker: added properties for TLS/SSL support
+    - MqttBroker: added properties for authentication support
+    - MqttBroker: fixed internal config file handling leading to settings being applied properly
+    - MqttClient: fixed internal conversion of ``keepAlive`` property
+    - MqttClient: added Websockets support and ``useWebSockets`` property
+    - MqttClient: properly close connection when destroying object
+    - MqttWildcardSubscription: added initial implementation
+* OpcUa:
+    - Added initial implementation
+* WebApp:
+    - Added initial implementation (only available in apps based on the InCore WebApp Engine)

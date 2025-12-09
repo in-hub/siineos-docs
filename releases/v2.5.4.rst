@@ -1,0 +1,69 @@
+SIINEOS 2.5.4
+=============
+
+* Release date: 2022-04-21
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.5.4.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.5.4.raucb>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - SMAC: added new page :guilabel:`Updates` allowing to upload and install update bundles
+    - SMAC: added :guilabel:`Restart device` button to the :guilabel:`System` page
+    - SMAC: improved usability on small displays
+    - SMAC: improved session management to show message if session has expired or the user has been logged out automatically
+    - Updated RAUC to 1.6
+* Kernel:
+    - Updated to 5.4.190
+    - input: evdev: increase EVDEV_MIN_BUFFER_SIZE
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 20.10.14 / containerd 1.5.11
+    - FreeTDS 1.3.10
+    - InCore 2.5.4
+    - WebApp Engine 2.5.4
+    - Qt 5.12.12.2
+* Debian security updates:
+    - openssl: https://www.debian.org/security/2022/dsa-5103
+    - zlib: https://www.debian.org/security/2022/dsa-5111
+    - gzip: https://www.debian.org/security/2022/dsa-5122
+    - xz-utils: https://www.debian.org/security/2022/dsa-5123
+
+InCore
+------
+
+* Foundation:
+    - Application: dump QML stacktrace when ``debug`` is set to ``true`` and an error occurs
+    - DataObjectWriter: added ``submitChangedObjectsOnly`` property
+    - Repeater: added ``objectAdded()`` and ``objectRemoved()`` signals
+    - StoragePath: dropped internal helper class
+    - System: improve fallback for ``deviceId`` property
+    - Timer: also emit the ``runningChanged()`` signal when calling the ``start()``/``stop()`` methods
+    - UpdateManager: changed default values of the ``auto*`` properties to ``false``
+    - UpdateManager: added return value to the ``installNextBundle()`` method
+    - UpdateManager: added ``installStepMessage`` property
+    - UpdateManager: made the ``pendingUpdates`` property writable
+    - UpdateManager: update the ``progress`` property more reliably by connecting to the RAUC service directly
+* CloudOfThings:
+    - CloudOfThingsClient: use hostname as fallback for clientId
+    - CloudOfThingsMeasurementWriter: honor the new ``submitChangedObjectsOnly`` property
+    - CloudOfThingsMeasurementWriter: optimized performance when populating the ``objects`` property
+* Database:
+    - DatabaseQuery: don't use polling mechanism in the ``execute()`` method to properly update the ``results`` property on subsequent reads
+    - DatabaseQuery: don't use polling mechanism when updating the ``results`` property after the attached table becomes ready
+* IO:
+    - Keyboard: dropped ``usbLocation`` property – use relevant parts of the ``physicalLocation`` property instead
+    - Keyboard: fixed receiving large number of input events by increasing buffer sizes in both kernel and userspace
+    - Keyboard: log warning on missed input events
+* Mqtt:
+    - MqttClient: trace ``publish()`` calls even if disconnected
+    - MqttMeasurementWriter: added ``container`` and ``measurementsFieldName`` properties
+    - MqttMeasurementWriter: added ``JsonArray`` and ``CborArray`` modes
+    - MqttMeasurementWriter: honor the new ``submitChangedObjectsOnly`` property
+    - MqttMeasurementWriter: optimized performance when populating the ``objects`` property
+    - MqttSubscription: unsubscribe when ``MqttClient`` enters disconnected state in order to fix subscribe on reconnect
+* WebApp:
+    - Update InCore components to 2.5.4
+    - Added favicons
+    - Build with Qt 6.2.4 and Emscripten SDK 3.1.8

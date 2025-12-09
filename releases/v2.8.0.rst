@@ -1,0 +1,37 @@
+SIINEOS 2.8.0
+=============
+
+* Release date: 2024-05-08
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.8.0.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.8.0.raucb>`_
+
+SIINEOS
+-------
+
+* Changes:
+    - Integrated VictoriaMetrics time series database for high-performance recording of I/O signals and system metrics
+    - Added TOSIBOX Lock for Container app for remote access to gateway and connected devices
+    - Introduced NumCorder app
+    - Added support for our new products HUB-IO100 and HUB-EN200
+    - Significantly improved support for HUB-GM200
+    - Added I/O provider for connecting/communicating with Siemens S7 controllers
+    - Extended system monitoring module: new subpages for insight into the running processes and the system journal
+    - OPC UA signals can now be easily integrated via graphical OPC UA browser
+    - Serial interfaces such as RS485 and backplane bus can now be used by several Modbus RTU clients simultaneously
+    - Significantly improved performance and usability of the SIINEOS management interface
+    - Added HTTPS support for accessing the SIINEOS management interface
+    - Advanced and optimized the Modbus client for better error detection and handling
+    - MQTT client now supports authentication with username/password and websockets
+    - The Network configuration module has been revised and made more user-friendly
+    - Added support for installing and updating Grafana and NodeRED apps offline
+    - Numerous bug fixes 
+* Components:
+    - Bootloader 2021.07.9 (not installed/updated automatically)
+    - Docker 25.0.5 / containerd 1.6.31
+    - FreeTDS 1.3.18
+    - InCore 2.8.0
+    - Qt 5.15.13.1 with SQLite 3.45.1
+    - open62541 1.3.6-8
+    - RAUC 1.11.3
+    - WebApp Engine 2.8.0
+* Debian security updates: <none>

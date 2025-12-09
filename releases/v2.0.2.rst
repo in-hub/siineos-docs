@@ -1,0 +1,48 @@
+SIINEOS 2.0.2
+=============
+
+* Release date: 2020-04-16
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-armhf-update-v2.0.2.raucb>`_
+* `Image download <https://download.inhub.de/siineos/images/siineos-armhf-disk-v2.0.2.img.gz>`_
+
+SIINEOS
+-------
+
+* General:
+	- Updated FreeTDS to 1.1.32
+	- Enabled IP forwarding per default
+	- Improved default firewall rules and firewall service handling
+* Kernel:
+	- Updated to 5.4.32
+	- Dropped unused device frequency support
+	- Extended nftables support
+* Debian security updates:
+	- gnutls28: https://www.debian.org/security/2020/dsa-4652
+
+InCore
+------
+
+* Foundation:
+	- CsvWriter: added output mode `OutputCustom`
+	- DateTime: fixed conversion to display string when created from a DATETIME database record instead of a timestamp
+	- Measurement: fixed conversion to display string when used by `DataObjectWriter` objects
+	- Measurement: include SI prefix in display name, e.g. column names in CSV files written by `CsvWriter` objects
+	- MobileNetworkInterface: skip modem initialization if interface is not enabled
+* IO:
+	- DigitalIO: added `openDrainFault` property
+	- SerialPort: clear `IoDevice.append` property per default to fix port open failures
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 5.4.32.1
+* Qt 5.12.8.1
+* InCore 2.0.2
+* RAUC 1.2.1
+* Docker 19.03.8.1
+* FreeTDS 1.1.32.1
+* ModemManager 1.10.9.1
+* ModemManagerQt 5.69.0.1
+* Solid 5.69.0.1
+* WPA 2.9.12.1

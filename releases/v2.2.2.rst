@@ -1,0 +1,57 @@
+SIINEOS 2.2.2
+=============
+
+* Release date: 2020-11-12
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-armhf-update-v2.2.2.raucb>`_
+* `Image download <https://download.inhub.de/siineos/images/siineos-armhf-disk-v2.2.2.img.gz>`_
+
+SIINEOS
+-------
+
+* General:
+    - Base system updated to Debian GNU/Linux 10.6 release
+    - Internal SQLite implementation in Qt updated to 3.33.0
+    - Updates bundles now compressed with XZ
+    - docker/containerd binaries compressed with all filters and brute force compression 
+    - nginx now serves precompressed files if available
+    - Updated Docker to 19.03.13
+    - Updated FreeTDS to 1.2.10
+    - Updated WPA to 2.9.15.1
+* Kernel:
+    - Updated to 5.4.77 and dropped TI-specific patches except for cpuidle support
+    - InitRD now compressed with LZ4
+* Debian security updates:
+    - freetype: https://www.debian.org/security/2020/dsa-4777
+    - mariadb: https://www.debian.org/security/2020/dsa-4776
+    - nginx: https://www.debian.org/security/2020/dsa-4750
+
+InCore
+------
+
+* Foundation:
+    - DockerContainer: added new property `workingDirectory`
+    - System: changed `deviceTemperature` and `deviceHumidity` properties to contain converted measurements as floats
+* Database:
+    - DatabaseSqlQuery: improved error handling and reporting for SQLite
+    - DatabaseTable: fix legacy support for DatabaseFieldOptions via property
+* IO:
+    - BackplaneBus: added missing internal type registration to properly show registered devices in debugger
+    - CanBus: added `busStatus` property
+    - CanBus: added `reset()` method
+    - Relay: added `valueChanged` signal
+    - SensirionSPS30: fixed internal string comparison when serializing properties to prevent buffer overflow
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 5.4.77.1
+* Qt 5.12.11.1
+* InCore 2.2.2
+* RAUC 1.4.1
+* Docker 19.03.13.1
+* FreeTDS 1.2.10.1
+* ModemManager 1.10.9.1
+* ModemManagerQt 5.75.0.1
+* Solid 5.75.0.1
+* WPA 2.9.15.1

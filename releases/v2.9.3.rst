@@ -1,0 +1,32 @@
+SIINEOS 2.9.3
+=============
+
+* Release date: 2025-05-20
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.9.3.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.9.3.raucb>`_
+
+SIINEOS
+-------
+
+* Improvements / bugfixes:
+    - Added search field to OPC UA node browse dialog
+    - Added placeholder texts and hints for empty tables or empty search results (users, I/O signals, firewall rules, alert signals/destinations/rules etc.) 
+    - Added ``HttpClient`` object to ``InCore.Http`` module
+    - Added support for callbacks to ``HttpRequest`` methods
+    - Improved heartbeat support in SIGNL4 app
+    - OPC UA client now shows and uses display names (instead of browse names) when adding signals
+    - Fixed power factor calculation and sequence error evaluation for HUB-EN200
+    - Fixed FlexPlorer not loading properly
+    - Added data type evaluation when parsing JSON data in MQTT client
+    - Made JSON data parsing in MQTT client more robust
+* Components:
+    - Bootloader 2021.07.9 (not installed/updated automatically)
+    - Linux Kernel 5.4.293
+    - Docker 25.0.5 / containerd 1.6.31
+    - FreeTDS 1.4.26
+    - InCore 2.9.3
+    - Qt 5.15.16.2 with SQLite 3.49.1
+    - open62541 1.4.12-1
+    - RAUC 1.13.0
+    - WebApp Engine 2.9.3
+* Debian security updates: <none>

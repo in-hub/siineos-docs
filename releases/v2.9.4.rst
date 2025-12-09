@@ -1,0 +1,43 @@
+SIINEOS 2.9.4
+=============
+
+* Release date: 2025-08-28
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.9.4.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.9.4.raucb>`_
+
+SIINEOS
+-------
+
+* Improvements / bugfixes:
+	- General: use device-type-specific hostname with device ID appended per default
+	- OPC UA client: Byte/SByte values are now interpreted as numbers
+	- OPC UA client: improved performance, reliability and visual appearence of node browsing dialog
+	- MQTT client: replace auto-discovery mechanism with new topic browsing dialog similar to OPC UA, making the process of adding MQTT topics much more comfortable
+	- MQTT client: added configuration option for MQTT protocol version to also support MQTT 5
+	- MQTT client: fixed non-working TLS connections on startup
+	- MQTT client: make client ID configurable
+	- Alert destinations: make MQTT broker port configurable
+	- Alert signals: fixed loading polarity setting of binary source signals
+	- Added support for CIN6S-based devices
+	- HUB-EN200: added signals containing sums of all phases for energy and power signals
+	- HUB-GM100/GM200/IO100: do not used fixed measurement units (mA/V) for analog input signals
+	- HUB-GM200: do not output voltage at digital outputs when disabled
+	- Reload licenses after system time has been synchronized to fix licensing issues
+	- Added support for latest HUB-SE100 hardware revision
+	- Enabled security extensions support for the storage partition, fixing issues when downloading special Docker containers
+	- Fixed webapps crashing under certain circumstances
+* Components:
+	- Bootloader 2021.07.10 (not installed/updated automatically)
+	- Linux Kernel 5.4.296
+	- Docker 25.0.5 / containerd 1.6.31
+	- FreeTDS 1.4.26
+	- InCore 2.9.4
+	- Qt 5.15.17 with SQLite 3.50.3
+	- open62541 1.4.13-1
+	- RAUC 1.13.0
+	- VictoriaMetrics 1.113.0
+	- WebApp Engine 2.9.4
+* Debian security updates:
+	- https://www.freexian.com/lts/extended/updates/ela-1430-1-vim/
+	- https://www.freexian.com/lts/extended/updates/ela-1452-1-glibc/
+	- https://www.freexian.com/lts/extended/updates/ela-1476-1-sudo/
