@@ -1,0 +1,33 @@
+SIINEOS 2.10.0
+===============
+
+* Release date: 2026-03-XX
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.10.0.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.10.0.raucb>`_
+
+SIINEOS
+-------
+
+* New features / major changes:
+    - Added ARM64 version which runs on **64 bit ARM devices** such as HUB-GM400/HUB-CX400
+    - Full **IO-Link** support via JSON Integration
+    - Added optional **Wifi access point mode** for dual-band (T2U archer) Wifi sticks
+    - Rebased Linux Kernel to 6.18
+    - Rebased userspace to **Debian 12**
+    - Use new system interface (libgpiod) for reading/writing GPIO resulting in improved performance
+    - Rebased container technology stack to **containerd 2** and **Docker 29** with systemd cgroups
+* Improvements / bugfixes:
+    - Fixed system bus timeouts when using many custom I/O unit icons
+    - Optionally store metrics about system processes in VictoriaMetrics database
+    - Modbus RTU/TCP I/O provider now supports reading/writing strings
+* Components:
+	- Bootloader 2024.04.1 (not installed/updated automatically)
+	- Linux Kernel 6.18.15
+	- Docker 29.2.1 / containerd 2.2.1
+	- FreeTDS 1.5.14
+	- InCore 2.10.0
+	- Qt 5.15.18 with SQLite 3.51.2
+	- open62541 1.4.16-1
+	- RAUC 1.15.1
+	- VictoriaMetrics 1.136.0
+	- WebApp Engine 2.10.0
