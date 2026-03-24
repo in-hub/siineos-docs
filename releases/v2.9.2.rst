@@ -1,0 +1,29 @@
+SIINEOS 2.9.2
+=============
+
+* Release date: 2025-05-05
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.9.2.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.9.2.raucb>`_
+
+SIINEOS
+-------
+
+* Improvements / bugfixes:
+    - Improved web interface reliability for slow (e.g. mobile) network connections
+    - Improved heartbeat and LED control in SIGNL4 app
+    - Added power factor signals to HUB-EN200 I/O units
+    - Fixed saving OK delay of alert signals
+    - Fixed I/O units/signal selection dialogs flickering in some cases
+* Components:
+    - Bootloader 2021.07.9 (not installed/updated automatically)
+    - Linux Kernel 5.4.293
+    - Docker 25.0.5 / containerd 1.6.31
+    - FreeTDS 1.4.26
+    - InCore 2.9.2
+    - Qt 5.15.16.2 with SQLite 3.49.1
+    - open62541 1.4.11-1
+    - RAUC 1.13.0
+    - WebApp Engine 2.9.2
+* Debian security updates:
+    - https://www.freexian.com/lts/extended/updates/ela-1411-1-expat/
+    - https://www.freexian.com/lts/extended/updates/ela-1412-1-libxml2/
