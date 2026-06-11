@@ -1,0 +1,26 @@
+SIINEOS 2.10.2
+===============
+
+* Release date: 2026-04-29
+* `Standard update bundle download for ARMHF <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.10.2.raucb>`_
+* `Standard update bundle download for ARM64 <https://download.inhub.de/siineos/updates/siineos-standard-arm64-update-v2.10.2.raucb>`_
+
+SIINEOS
+-------
+
+* Improvements / bugfixes:
+    - Fixed regression in 2.10.1 which broke licenses uploading
+    - Show "Add signal" button only for I/O units with managed (non-static) signals
+    - Fixed size check for custom I/O-unit icons
+* Components:
+	- Bootloader 2024.04.1 (not installed/updated automatically)
+	- Linux Kernel 6.18.25
+	- Docker 29.4.1 / containerd 2.2.3
+	- FreeTDS 1.5.16
+	- InCore 2.10.2
+	- Qt 5.15.18 with SQLite 3.51.3
+	- open62541 1.4.16-1
+	- RAUC 1.15.1
+	- VictoriaMetrics 1.142.0
+	- WebApp Engine 2.10.2
+* Debian security updates: <none>

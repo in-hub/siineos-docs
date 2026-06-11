@@ -1,0 +1,49 @@
+SIINEOS 2.10.3
+===============
+
+* Release date: 2026-06-XX
+* `Standard update bundle download for ARMHF <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.10.3.raucb>`_
+* `Standard update bundle download for ARM64 <https://download.inhub.de/siineos/updates/siineos-standard-arm64-update-v2.10.3.raucb>`_
+
+SIINEOS
+-------
+
+* Improvements / bugfixes:
+    - Increased message queue limit of internal MQTT broker limit to 10000, fixing operation with large number of I/O units and I/O signals (> 1000)
+    - Fixed the Docker bridge IP address setting not being applied properly
+    - Improved internal management of system services for better boot performance
+    - Display hardware ID at the *Licensing* page
+    - Added extra controls to text fields allowing to copy the text to the clipboard or toggle the visibility of passwords
+    - When rebooting via menu or after system update, keep the "Please wait..." popup open until the device is actually online again
+    - Improved Wifi configuration page and resiliency against invalid AP configurations (e.g. disallowed usage of 2.4 GHz channels 12+13 for default country code)
+    - Added support for HUB-SE400 devices and fine-tuned I/O signals for HUB-SE100 devices
+    - Fixed non-working buttons (reset to factory defaults etc.) InGraf admin app
+    - Performance of the licensing module has been improved significantly, reducing boot times and eliminating delays when adding or removing licenses
+    - Improved visibility of network configuration pages for HUB-SE100/HUB-SE400 devices
+    - Disabled unused Kernel cryto features to reduce attack surface
+    - Enable hardware-based random number generators for HUB-GM100 and IMX6ULL-based devices
+    - Use the Jitter RNG as the default software-based random number generator
+    - Added missing library to make nftables (system firewall) work again
+    - Improved system bus and API service detection to keep overlay open until device has booted completely
+    - Improved HUB-VM102 I/O unit to reconnect on connection loss and update signal timestamps more reliably
+    - Improved internal ModbusSlave implementation to clear the requests queue when client disconnects
+    - Removed improperly working "Shutdown device" action
+    - Removed rngd tools and services since not required with modern Kernels any longer
+* Components:
+	- Bootloader 2024.04.2 (not installed/updated automatically)
+	- Linux Kernel 6.18.35
+	- Docker 29.5.3 / containerd 2.2.4
+	- FreeTDS 1.5.18
+	- InCore 2.10.3
+	- Qt 5.15.19 with SQLite 3.53.1
+	- open62541 1.4.16-1
+	- RAUC 1.15.1
+	- VictoriaMetrics 1.145.0
+	- WebApp Engine 2.10.3
+* Debian security updates:
+    - bind9: DSA 6251 (https://lists.debian.org/debian-security-announce/2026/msg00196.html)
+    - libpng1.6: DSA 6263 (https://lists.debian.org/debian-security-announce/2026/msg00174.html)
+    - postgresql-15: DSA 6269 (https://lists.debian.org/debian-security-announce/2026/msg00180.html)
+    - nginx: DSA 6278 (https://lists.debian.org/debian-security-announce/2026/msg00189.html)
+    - gnutls28: DSA 6281 (https://lists.debian.org/debian-security-announce/2026/msg00192.html)
+

@@ -1,0 +1,67 @@
+SIINEOS 2.9.0
+=============
+
+* Release date: 2025-03-10
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.9.0.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.9.0.raucb>`_
+
+SIINEOS
+-------
+
+* New features:
+    - New **Alarming** module allowing to define alarm signals, alarm destinations and alarm rules
+    - New **SIGNL4** app
+    - New **I/O endpoints** module with **Modbus I/O endpoint** as first feature
+    - New **timeseries database management** page allowing to export metrics (recorded I/O signals etc.) as CSV files
+    - New I/O provider for **ControlPlex CPC12** devices
+    - New **SMTP configuration** page
+    - Added **reactive power and energy signals** to **HUB-EN200** I/O provider
+    - Added **Modbus device profile** export & import mechanism
+    - Added storage maintenance actions for **cleaning up or resetting Docker and VictoriaMetrics**
+    - Added page to show **details about storage usage of individual Docker containers, images and volumes**
+    - Added more system management commands to **siineos-cli**
+* Notable changes:
+    - Removed legacy Prometheus integration/support from InGraf app
+    - Power supplies for Backplane bus and RS485 on HUB-GM200 devices no longer are controlled by Modbus client I/O units. Instead HUB-GM200 units now have dedicated I/O signals for controlling these power supplies.
+    - TOSIBOX Lock-for-Container app updated to 5.5.1 and now requires a valid in.hub app license – **don't update to SIINEOS 2.9 when connected remotely via TOSIBOX Softkey only or make sure to install the TB LfC app license before updating**
+* Improvements / bugfixes:
+    - Added button to reset certain I/O signals such as energy signals
+    - Added packet flow optimization setting to Modbus TCP client
+    - Report Modbus timeout errors in I/O unit
+    - Do not write Modbus registers if unit/signal is disabled
+    - Optimized I/O signal processing
+    - OPC/UA client now supports string values
+    - OPC/UA client now converts DateTime objects to timestamps
+    - Fixed OPC/UA node browsing if object node contains method nodes
+    - Added setting to configure timestamp source of OPC/UA signals
+    - Improved auto-reconnect in S7 client on connection errors
+    - Refactored HUB-VM102 I/O provider for use with new vibration analytics app
+    - Improved automatic Docker container restarts in apps for higher resilience to errors within the Docker containers (crashes of NodeRED, Grafana etc.)
+    - Stop Docker container of a Docker-based app immediately when disabling app
+    - Numerous other bug fixes and UI improvements 
+    - Improved Modbus RTU performance by keeping serial ports open between requests
+* Components:
+    - Bootloader 2021.07.9 (not installed/updated automatically)
+    - Linux Kernel 5.4.290
+    - Docker 25.0.5 / containerd 1.6.31
+    - FreeTDS 1.4.26
+    - InCore 2.9.0
+    - Qt 5.15.16.1 with SQLite 3.49.0
+    - open62541 1.4.10-1
+    - RAUC 1.13.0
+    - WebApp Engine 2.9.0
+* Debian security updates:
+    - https://www.freexian.com/lts/extended/updates/ela-1141-1-krb5/
+    - https://www.freexian.com/lts/extended/updates/ela-1172-1-postgresql-11/
+    - https://www.freexian.com/lts/extended/updates/ela-1176-1-libxml2/
+    - https://www.freexian.com/lts/extended/updates/ela-1185-1-iproute2/
+    - https://www.freexian.com/lts/extended/updates/ela-1190-1-expat/
+    - https://www.freexian.com/lts/extended/updates/ela-1192-1-mariadb-10.3/
+    - https://www.freexian.com/lts/extended/updates/ela-1195-1-libxml2/
+    - https://www.freexian.com/lts/extended/updates/ela-1240-1-glib2.0/
+    - https://www.freexian.com/lts/extended/updates/ela-1256-1-openssl/
+    - https://www.freexian.com/lts/extended/updates/ela-1290-2-rsync/
+    - https://www.freexian.com/lts/extended/updates/ela-1302-1-postgresql-11/
+    - https://www.freexian.com/lts/extended/updates/ela-1324-1-openssh/
+    - https://www.freexian.com/lts/extended/updates/ela-1327-1-libxml2/
+    - https://www.freexian.com/lts/extended/updates/ela-1328-1-krb5/
