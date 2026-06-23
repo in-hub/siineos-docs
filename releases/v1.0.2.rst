@@ -1,0 +1,60 @@
+SIINEOS 1.0.2
+=============
+
+* Release date: 2019-09-24
+
+SIINEOS
+-------
+
+* General:
+	- Fixed start order for InCore setup and storage services
+	- Dropped obsolete SSH setup service
+* Bootloader:
+	- Added version querying support
+* Kernel:
+	- Updated to 4.19.75
+	- Enabled XZ support for SquashFS
+	- Enabled fadvise/madvise syscalls
+* Docker:
+	- Updated to 19.03.2
+
+InCore
+------
+
+* Foundation:  
+	- Application: added properties and methods for debugging and tracing
+	- DockerService: increase operation timeouts
+	- File: made filename handling more secure
+	- List: added `countChanged()` signal
+	- List: improved emission of `itemsCleared()` signal
+	- MobileNetworkInterface: added `iccid` property
+	- Object: added `parent` pseudo-property
+	- Polling: cache polled properties
+	- Process: added initial implementation allowing to run external processes
+	- Resource: update `data` property when changing encoding
+	- Resource: made filename handling more secure
+	- System: added `bootloaderVersion` property
+	- SystemService: added `timeout` property
+* CloudOfThings:
+	- CloudOfThingsClient: made `imei` and `imsi` properties writable
+	- CloudOfThingsClient: added `iccid` property
+	- CloudOfThingsClient: implemented publishing software versions
+	- CloudOfThingsDeviceManager: added initial support for updating system components via Cloud
+* IO:
+	- DigitalIO: added support for up to 6 I/Os for GM200
+	- I2cBus, I2Device: added initial implementation
+	- FtdiI2cBus: added initial implementation
+	- Ltc2483Adc: added initial implementation
+	- System: blacklisted ftdi_sio driver for FT232H chips
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 4.19.75.1
+* Qt 5.12.5.4
+* InCore 1.0.2
+* RAUC 1.1.3
+* Docker 19.03.2.1
+* ModemManagerQt 5.62.0.1
+* Solid 5.62.0.1
