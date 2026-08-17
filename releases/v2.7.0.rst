@@ -1,0 +1,44 @@
+SIINEOS 2.7.0
+=============
+
+* Release date: 2022-12-06
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.7.0.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.7.0.raucb>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - SMAC: completely revised user interface, navigation and visual feedbacks
+    - SMAC: added *Firewall* module allowing to configure Internet connection sharing, incoming/outgoing traffic control and port forwarding
+    - SMAC: added *Synthetic I/O signals* page for defining custom signals based on other signals
+    - SMAC: added I/O unit types (HUB-VM102, TURCK CCM60, TBEN-S2-4AI, TBEN-S1-8DIP)
+    - SMAC: added many functionalities regarding management of I/O signals
+    - SMAC: added OpenVPN configuration import functionality
+    - SMAC: improved OPC UA client support
+    - SMAC: globally synchronize timers for reading I/O signals
+    - InCore: optimized CPU usage and performance of network interface management operations
+    - systemd updated to 247.3
+* Kernel:
+    - Updated to 5.4.225
+    - Added support for TURCK devices
+    - Added support for new eMMC driver
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 20.10.21 / containerd 1.6.10
+    - FreeTDS 1.3.15
+    - InCore 2.7.0
+    - WebApp Engine 2.7.0
+    - Qt 5.15.5.4
+    - open62541 1.3.4
+    - RAUC 1.8
+* Debian security updates:
+    - zlib: https://www.debian.org/security/2022/dsa-5218
+    - expat: https://www.debian.org/security/2022/dsa-5236
+    - dbus: https://www.debian.org/security/2022/dsa-5250
+    - expat: https://www.debian.org/security/2022/dsa-5266
+    - ntfs-3g: https://www.debian.org/security/2022/dsa-5270
+    - libxml2: https://www.debian.org/security/2022/dsa-5271
+    - nginx: https://www.debian.org/security/2022/dsa-5281
+    - krb5: https://www.debian.org/security/2022/dsa-5286
+    

@@ -1,0 +1,43 @@
+SIINEOS 1.0.3
+=============
+
+* Release date: 2019-10-10
+
+SIINEOS
+-------
+
+* General:
+	- Optimized symbol visibility of InCore modules leading to reduced binary sizes and loading times
+* Kernel:
+	- Updated to 4.19.78
+* Docker:
+	- Updated to 19.03.3
+* Debian security updates:
+	- e2fsprogs: https://www.debian.org/security/2019/dsa-4535
+	- wpa: https://www.debian.org/security/2019/dsa-4538
+	- openssl: https://www.debian.org/security/2019/dsa-4539
+
+InCore
+------
+
+* Foundation:
+	- Gather: added `orderBy` property
+	- Object: added `toJson()` and `fromJson()` methods
+	- System: marked non-changing properties as constant
+	- Repeater: suppress warning when operating on custom QML list properties
+* CloudOfThings:
+	- CloudOfThingsClient: fixed calculation of `keepAlive` property
+* Modbus:
+	- ModbusSlave: added optional `client` property
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 4.19.78.1
+* Qt 5.12.5.5
+* InCore 1.0.3
+* RAUC 1.1.3
+* Docker 19.03.3.1
+* ModemManagerQt 5.62.0.1
+* Solid 5.62.0.1

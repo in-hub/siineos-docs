@@ -1,0 +1,29 @@
+SIINEOS 2.7.1
+=============
+
+* Release date: 2023-01-25
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.7.1.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.7.1.raucb>`_
+
+SIINEOS
+-------
+
+* Changes:
+    - SMAC: fixed upload of custom icons for I/O units
+    - SMAC: fixed user modification / password change
+    - SMAC: minor UI improvements
+    - InGraf: revised UI and added buttons for updating Grafana and Prometheus
+* Kernel:
+    - Updated to 5.4.230
+    - Improved mcp2221 driver for better compatibility with certain I2C devices
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 20.10.23 / containerd 1.6.15
+    - FreeTDS 1.3.16
+    - InCore 2.7.1
+    - Qt 5.15.8.1 with SQLite 3.40.1
+    - open62541 1.3.4-7
+    - RAUC 1.8
+    - WebApp Engine 2.7.1
+* Debian security updates:
+    - sudo: https://www.debian.org/security/2023/dsa-5321

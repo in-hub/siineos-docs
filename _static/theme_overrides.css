@@ -1,0 +1,68 @@
+/* override table width restrictions */
+.wy-table-responsive table td, .wy-table-responsive table th {
+    white-space: normal;
+}
+
+.wy-table-responsive {
+    margin-bottom: 24px;
+    max-width: 100%;
+    overflow: visible;
+}
+
+.wy-nav-content {
+	background-color: white;
+	max-width: 1000px;
+}
+
+.wy-nav-content h1, .wy-nav-content h2, .wy-nav-content h3 {
+	font-family: "Work Sans", "Open Sans", "Roboto Slab","ff-tisa-web-pro","Georgia",Arial,sans-serif;
+}
+
+h2 {
+	background-color: #eee;
+}
+
+h3 {
+	background-color: white;
+	border-bottom: 1px solid #ccc;
+}
+
+body {
+	color: rgb(35,35,35);
+}
+
+.wy-nav-side {
+	background-color: #29323e;
+}
+
+.wy-side-nav-search {
+	background-color: #3f4752;
+}
+
+.wy-breadcrumbs-aside, div.version {
+	display: none !important;
+}
+
+.wy-side-nav-search input[type="text"] {
+	border-radius: 0px !important;
+	border: 1px solid rgba(0,0,0,0.5) !important
+}
+
+.rst-content table.field-list td, .rst-content table.field-list th {
+	font-size: 100%;
+}
+
+.rst-content div[class^="highlight"] pre {
+	font-size: 90%;
+}
+
+.rst-footer-buttons {
+	display: none;
+}
+
+.highlight .na { color: #3060a0 } /* Name.Attribute */
+.highlight .nb { color: #4070a0 } /* Name.Builtin */
+.highlight .nc { color: #68227d; font-weight: bold } /* Name.Class */
+.highlight .nf { color: #06287e; font-style: italic } /* Name.Function */
+.highlight .s1, .highlight .s2 { color: #208050 }
+

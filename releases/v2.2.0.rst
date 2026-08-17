@@ -1,0 +1,64 @@
+SIINEOS 2.2.0
+=============
+
+* Release date: 2020-07-17
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-armhf-update-v2.2.0.raucb>`_
+* `Image download <https://download.inhub.de/siineos/images/siineos-armhf-disk-v2.2.0.img.gz>`_
+
+SIINEOS
+-------
+
+* General:
+    - Updated Docker to 19.03.12
+    - Updated FreeTDS to 1.2.3
+    - Updated WPA to 2.9.13.1
+* Kernel:
+    - Updated to 5.4.52/TI-R13
+    - Switched to performance instead of size optimized builds
+    - Fixed imx7d oscillator initialization for ENET2
+* Debian security updates: <none>
+
+InCore
+------
+
+* Foundation:
+    - JsonRpcClient: added initial implementation
+    - JsonRpcServer: added `debugRpcMessages` property
+    - UpdateManager: properly reset `error` and `errorData` properties when starting new operations
+* CloudOfThings:
+    - Added new REST transport
+    - Use REST transport per default in favor of MQTT
+    - Added realtime notification support
+    - Fixed publish/availability interval updates
+    - Improved device update functionality
+    - Use unified template names
+* Database:
+    - DatabaseExporter: reduced property scope in `rowFilterExpression` property
+* IO:
+    - AlphasenseOpcN3: added `SerialPortBus` support via `SerialPortBusNode` inheritance
+    - AnalogInput: added properties `voltage` and `current`
+    - DigitalIO: added `inputValue` and `outputValue` properties
+    - EdgeDetector: added initial implementation
+    - Relay: improved initialization of `value` property
+    - SensirionSPS30: refactored to inherit from `SerialPortBusNode`
+    - SerialPort: fixed `builtinRS485PortName` property for GM200 devices
+    - SerialPortBus: always flush `SerialPort`
+    - SerialPortBus: close port properly when aborting operations
+    - SerialPortBusNode: added initial implementation
+* Modbus:
+    - ModbusServer: added trace
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 5.4.52.1
+* Qt 5.12.9.3
+* InCore 2.2.0
+* RAUC 1.3.1
+* Docker 19.03.12.1
+* FreeTDS 1.2.3.1
+* ModemManager 1.10.9.1
+* ModemManagerQt 5.72.0.1
+* Solid 5.72.0.1
+* WPA 2.9.13.1

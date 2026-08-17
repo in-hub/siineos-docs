@@ -1,0 +1,40 @@
+SIINEOS 2.5.1
+=============
+
+* Release date: 2021-11-12
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.5.1.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.5.1.raucb>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - Added timezone support to WebApp Engine
+* Kernel:
+    - Updated to 5.4.158
+    - Added RemoteProc and RP-messaging support for i.MX-based devices
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 20.10.10 / containerd 1.4.11
+    - FreeTDS 1.3.3
+    - InCore 2.5.1
+    - WebApp Engine 2.5.1
+    - Qt 5.12.12.1
+* Debian security updates:
+    - postgresql-11: https://www.debian.org/security/2021/dsa-5006
+
+InCore
+------
+
+* Foundation:
+    - Application: apply timezone settings globally, even for 3rdparty libraries such as SQLite
+    - DateTime: added ``parseToString()`` method
+    - DateTime: added ``running`` property
+* Database:
+    - DatabaseTable: always store datetime fields in UTC
+* Mqtt:
+    - MqttClient: improve handling of connection-related properties at runtime and fix auto-reconnect
+* WebApp:
+    - Build with latest Qt 6.2.2 snapshot and Emscripten SDK 2.0.34
+    - Added timezone support by embedding tzdata files
+    - Added status icons for digital IOs

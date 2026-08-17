@@ -1,0 +1,34 @@
+SIINEOS 2.7.3
+=============
+
+* Release date: 2023-04-14
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.7.3.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.7.3.raucb>`_
+
+SIINEOS
+-------
+
+* Changes:
+    - SMAC: add license management page
+    - SMAC: automatically open search field when starting to type in pages where items can be searched
+    - SMAC: removed non-existing blue LED from IM18-CCM60 I/O provider
+    - SMAC: added user role check
+    - SMAC: fixed duplication of I/O connections and add *(copy)* suffix to name
+    - SMAC: add *(copy)* suffix to name of duplicated firewall rules
+    - SMAC: restore default output state of digital outputs or LEDs when removing or disabling a corresponding signal connection
+    - SMAC: hide calibration controls from IM18-CCM60 configuration page
+    - SMAC: when creating/duplicating I/O connections the name field now automatically gets input focus and switches to the next page when pressing Enter
+    - InCore: fixed polarity of digital I/Os of the IM18-CCM60 module
+* Kernel:
+    - Updated to 5.4.240
+    - Integrated RTL8812AU driver to support various WLAN ac dongles
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 23.0.2 / containerd 1.6.20
+    - FreeTDS 1.3.17
+    - InCore 2.7.3
+    - Qt 5.15.9.1 with SQLite 3.41.2
+    - open62541 1.3.5-8
+    - RAUC 1.9
+    - WebApp Engine 2.7.3
+* Debian security updates: <none>

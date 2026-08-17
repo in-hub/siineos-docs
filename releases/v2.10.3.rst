@@ -1,0 +1,72 @@
+SIINEOS 2.10.3
+===============
+
+* Release date: 2026-06-22
+* `Standard update bundle download for ARMHF <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.10.3.raucb>`_
+* `Standard update bundle download for ARM64 <https://download.inhub.de/siineos/updates/siineos-standard-arm64-update-v2.10.3.raucb>`_
+
+Improvements
+------------
+
+- Display hardware ID at the *Licensing* page
+- Added extra controls to text fields allowing to copy the text to the clipboard or toggle the visibility of passwords
+- Added service availability detection when rebooting via menu or after system update to keep the popups open until the device is actually accessible again
+- Added possibility to select and remove multiple alert signals/rules/destinations, I/O connections, synthetic signals, firewall rules and Modbus server registers
+- Added support for HUB-SE400 devices and fine-tuned I/O signals for HUB-SE100 devices
+- Improved reliability of data exchange between admin UI and backend with large number of I/O units/signals by increasing message queue limit of internal MQTT broker to 10000
+- Modbus client I/O units now only records diagnostic metrics when enabled
+- Optimized management of system services for better boot performance
+- Extended system bus and API service detection to keep overlay open until device has booted completely
+- Improved HUB-VM102 I/O unit to reconnect on connection loss and update signal timestamps more reliably
+- Improved internal Modbus slave implementation to clear the requests queue when client disconnects
+- Improved performance of the licensing module, reducing boot times and eliminating delays when adding or removing licenses
+- Improved Wifi configuration page and resiliency against invalid AP configurations (e.g. disallowed usage of 2.4 GHz channels 12+13 for default country code)
+- Revised visibility of network configuration pages for HUB-SE100/HUB-SE400 devices
+- Include identifier in search when searching for I/O signals
+
+Bugfixes
+--------
+- Fixed broken network firewall by adding missing library required by nftables
+- Fixed the Docker bridge IP address setting not being applied properly
+- Fixed timeseries database CSV export if UI language is English and no delimiter is selected explicitly
+- Fixed lower/upper bound checking in I/O signals quick edit dialog
+- Fixed device description field not accepting non-alphanumeric characters
+- Fixed non-working buttons (reset to factory defaults etc.) in InGraf admin app
+- Fixed missing iptables compatibility Kernel modules for TOSIBOX Lock-for-Container app
+- Removed improperly working "Shutdown device" action
+
+Miscellaneous changes
+---------------------
+
+- Disabled unused Kernel cryto features to reduce attack surface
+- Enable hardware-based random number generators for HUB-GM100 and IMX6ULL-based devices
+- Use the Jitter RNG as the default software-based random number generator
+- Removed rngd tools and services since not required with modern Kernels any longer
+
+Components
+----------
+
+- Bootloader 2024.04.2 (not installed/updated automatically)
+- Linux Kernel 6.18.36
+- Docker 29.6.0 / containerd 2.2.5
+- FreeTDS 1.5.18
+- InCore 2.10.3
+- Qt 5.15.19 with SQLite 3.53.2
+- open62541 1.4.16-1
+- RAUC 1.15.1
+- VictoriaMetrics 1.145.0
+- WebApp Engine 2.10.3
+
+Debian security updates
+-----------------------
+
+- bind9: DSA 6251 (https://lists.debian.org/debian-security-announce/2026/msg00196.html)
+- libpng1.6: DSA 6263 (https://lists.debian.org/debian-security-announce/2026/msg00174.html)
+- postgresql-15: DSA 6269 (https://lists.debian.org/debian-security-announce/2026/msg00180.html)
+- nginx: DSA 6278 (https://lists.debian.org/debian-security-announce/2026/msg00189.html)
+- gnutls28: DSA 6281 (https://lists.debian.org/debian-security-announce/2026/msg00192.html)
+- openvpn: DSA 6289 (https://lists.debian.org/debian-security-announce/2026/msg00200.html)
+- krb5: DSA 6293 (https://lists.debian.org/debian-security-announce/2026/msg00204.html)
+- libgcrypt20: DSA 6294 (https://lists.debian.org/debian-security-announce/2026/msg00205.html)
+- nginx: DSA 6326 (https://lists.debian.org/debian-security-announce/2026/msg00237.html)
+- openssl: DSA 6335 (https://lists.debian.org/debian-security-announce/2026/msg00245.html)

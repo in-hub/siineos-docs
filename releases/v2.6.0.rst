@@ -1,0 +1,107 @@
+SIINEOS 2.6.0
+=============
+
+* Release date: 2022-08-10
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.6.0.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.6.0.raucb>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - SMAC: added *Apps* page allowing to manage builtin and installed apps
+    - SMAC: added *I/O management* page with I/O providers and connectors for all in.hub devices and several protocols/fieldbusses such as OPC UA, Modbus and MQTT
+    - Switched to Qt 5.15 for InCore framework and all apps, allowing to use new QML syntax features
+    - InCore: migrated OpcUa module to open62541 1.3
+    - InCore: many MQTT-related improvements and bugfixes such as dynamic listeners in the MQTT broker
+    - Updated OpenVPN to 2.5 which adds support for modern encryption/HMAC standards (e.g. ChaCha20/Poly1305) and new configuration file options
+* Kernel:
+    - Updated to 5.4.209
+    - Added support for more imx6ull-inhub devices
+    - Added support for ADCs on imx6ull-inhub devices
+    - Added support for GPIO-based keyboard input devices
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 20.10.17 / containerd 1.6.17
+    - FreeTDS 1.3.12
+    - InCore 2.6.0
+    - WebApp Engine 2.6.0
+    - Qt 5.15.5.1
+    - open62541 1.3.3
+    - RAUC 1.7
+* Debian security updates:
+    - postgresql-11: https://www.debian.org/security/2022/dsa-5135
+    - openssl: https://www.debian.org/security/2022/dsa-5139
+    - openldap: https://www.debian.org/security/2022/dsa-5140
+    - libxml2: https://www.debian.org/security/2022/dsa-5142
+    - ntfs-3g: https://www.debian.org/security/2022/dsa-5160
+    - containerd: https://www.debian.org/security/2022/dsa-5162
+    - openssl: https://www.debian.org/security/2022/dsa-5169
+    - gnutls28: https://www.debian.org/security/2022/dsa-5203
+    
+InCore
+------
+
+* Foundation:
+    - Configuration: added ``toDataMap()`` method
+    - ConfigurationObject: added ``toDataMap()`` method
+    - DataObject: emit ``dataChanged()`` signal before updating the ``timestamp`` property
+    - DataObject: set ``dirty`` flag before emitting the ``dataChanged()`` signal
+    - DockerContainer: added ``arguments`` property
+    - DockerContainer: added ``pull()`` method and ``PullFailed`` error
+    - JsonRpcServer: added ``name`` property to allow listening on a UNIX domain socket instead of a TCP port
+    - Measurement: added ``actualSiPrefixFactor`` property
+    - Measurement: added ``fullUnitString`` property
+    - MobileNetworkInterface: don't restart ModemManager service when disabled via the ``disabled`` property
+    - NetworkInterface: added ``bytesRx`` and ``bytesTx`` properties
+    - Object: properly serialize JS values stored in properties of type ``Variant``
+    - Object: improved updating the ``parent`` property
+    - System: added ``deviceSubtype`` property
+    - TcpServer: added ``listenError()`` signal
+    - TcpServer: improved shutdown and setup/listen sequence on property changes such as ``listening`` and ``port``
+    - Timer: properly emit the ``runningChanged()`` signal if ``repeat`` is set to ``false``
+    - WiredNetworkInterface: added ``subnetPrefixLength`` property
+    - WiredNetworkInterface: hide config item for ``vlan`` property per default
+* CloudOfThings:
+    - CloudOfThingsTransport: improved (re-)connect logic, massively reducing initial connect time
+* Database:
+    - DatabaseMeasurementWriter: renamed from MeasurementDatabase
+    - DatabaseMeasurementWriter: added ``store()`` method
+    - DatabaseMeasurementWriter: added ``database`` property
+* IO:
+    - AnalogInput: added support for IMX6ULL devices
+    - LED: added ``brightness`` property
+    - SensirionSPS30: added ``timestamp`` property
+* Modbus:
+    - ModbusSlave: added ``client`` property
+* Mqtt:
+    - MqttAbstractSubscription: improve ``autoSubscribe`` logic to disconnect from ``MqttClient`` signals when not subscribe
+    - MqttBroker: made restart more resilient
+    - MqttBroker: restart on every property change
+    - MqttBroker: replaced protocol-specific properties with new ``listeners`` property
+    - MqttClient: added ``publish()`` method
+    - MqttClient: downgrade log level of message in ``publish()`` method
+    - MqttListener: added new object to be used with ``MqttBroker``
+    - MqttPublication: publish again on every parent/client change
+    - MqttSubscription: don't subscribe again if already subscribed
+    - MqttSubscription: don't unsubscribe again if already unsubscribed
+    - MqttSubscription: automatically resubscribe after the ``name`` property of ``MqttTopic``s have changed
+    - MqttWildcardSubscription: reset data in ``unsubscribe()``
+    - MqttWildcardSubscription: reset ``subscribed`` property in ``unsubscribe()``
+* OpcUa:
+    - Migrated backend to open62541 1.3
+    - OpcUaClientConnection: added ``fullNodePath`` property
+    - OpcUaClientConnection: added overload for ``connectToEndpoint()`` method allowing to specify parameters via QML
+    - OpcUaClientNodeDiscovery: added new object for OPC UA node discovery
+    - OpcUaServer: restart on changes of the ``enabled`` and ``port`` properties
+    - OpcUaServer: added ``syncAllNodes()`` and ``syncNode()`` methods
+    - OpcUaServerNode: added ``enabled`` property
+    - OpcUaServerNode: added ``removeFromServer()`` method
+    - OpcUaServerNode: don't fall back to ``browseName`` if ``identifier`` is not set
+    - OpcUaServerValueNode: check session ID in read callback for open62541 1.3 compatibility
+* WebApp:
+    - Update InCore components to 2.6.0
+    - Replaced builtin font with Roboto font
+    - Fixed application view height on mobile browsers
+    - Added confirmation dialog when leaving app
+    - Build with Qt 6.2.4 and Emscripten SDK 3.1.12
