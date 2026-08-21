@@ -4,10 +4,12 @@ SIINEOS HTTP API reference
 Overview
 --------
 
-The SMAC-Server exposes a RESTful HTTP API on port **80**. All endpoints
-are prefixed with ``/api/v1``. The API is served by an internal HTTP server
-and provides access to system management, I/O control, alerting, licensing,
-firewall configuration, time-series data, and application management.
+This document describes the HTTP REST API exposed by the SMAC-Server application.
+The API is served on **port 80** (HTTP) and **port 443** (HTTPS, when a TLS
+certificate is configured). All endpoints are prefixed with ``/api/v1``.
+
+The following table lists the top-level API areas. Each area is documented in
+its own section below.
 
 .. list-table:: General endpoint summary
    :header-rows: 1
@@ -16,3013 +18,2268 @@ firewall configuration, time-series data, and application management.
      - Base Path
      - Description
    * - Authentication
-     - ``/api/v1/auth``
-     - Login, refresh, and logout
+     - ``/api/v1/auth``, ``/api/v1/sessions``
+     - Login, token refresh, logout, session management → :ref:`authentication`
    * - Users
      - ``/api/v1/users``
-     - User account management
+     - User account CRUD and disable → :ref:`users`
    * - System
-     - ``/api/v1/system``
-     - System information, metrics, configuration
+     - ``/api/v1/system``, ``/api/v1/storage``, ``/api/v1/sms``
+     - Device info, metrics, networking, clock, mail, SMS, config → :ref:`system`
    * - System Update
      - ``/api/v1/system/update``
-     - Firmware update upload and installation
-   * - Time Series (VictoriaMetrics)
+     - OTA update upload and installation → :ref:`system-update`
+   * - Time-Series Database
      - ``/api/v1/vmetrics``
-     - Metric queries, export, and management
-   * - I/O
+     - VictoriaMetrics query, export, delete, reset → :ref:`timeseries`
+   * - I/O Management
      - ``/api/v1/io``
-     - I/O units, signals, ports, connections
+     - Units, signals, ports, connections, processing chains → :ref:`io-management`
+   * - Synthetic Signals
+     - ``/api/v1/io/synthetic``
+     - Virtual computed signals → :ref:`synthetic-signals`
    * - Modbus Server
      - ``/api/v1/io/endpoints/modbus``
-     - Modbus TCP/RTU endpoint configuration
+     - Built-in Modbus TCP/RTU server and registers → :ref:`modbus-server`
    * - Firewall
      - ``/api/v1/firewall``
-     - Firewall rules and internet sharing
-   * - Licensing
-     - ``/api/v1/licensing``
-     - Software license management
-   * - Apps
-     - ``/api/v1/apps``
-     - Application control
+     - nftables rules and internet sharing → :ref:`firewall`
    * - Alerting
      - ``/api/v1/alerting``
-     - Alert signals, rules, and destinations
-   * - Ping
+     - Alert signals, destinations, and rules → :ref:`alerting`
+   * - Licensing
+     - ``/api/v1/licensing``
+     - License import, list, and removal → :ref:`licensing`
+   * - Apps
+     - ``/api/v1/apps``
+     - Application enable/disable and debug control → :ref:`apps`
+   * - Ping / Health
      - ``/api/v1/ping``
-     - Health check
-   * - Storage
-     - ``/api/v1/storage``
-     - Storage usage and Docker management
+     - Liveness check → :ref:`ping`
 
+.. _authentication:
 
 Authentication & Authorization
 ------------------------------
 
-Token Types
------------
+The API uses **JSON Web Tokens (JWT)** signed with the **EdDSA** algorithm.
+Two token types are issued:
 
-The system uses **JSON Web Tokens (JWT)** signed with the **EdDSA** algorithm.
+- **Access Token** – short-lived (3 minutes), used to authorize API requests.
+- **Refresh Token** – long-lived (30 days), used to obtain a new access token
+  without re-authenticating.
 
-.. list-table:: Token types
-   :header-rows: 1
+Token Claims
+~~~~~~~~~~~~
 
-   * - Token
-     - Lifetime
-     - Purpose
-   * - Access Token
-     - 3 minutes
-     - Authorizes API requests
-   * - Refresh Token
-     - 30 days
-     - Obtains new access tokens
+The access token contains the following claims:
 
+- ``sub`` – the login name of the authenticated user (string)
+- ``iat`` – issued-at timestamp (ISO 8601)
+- ``exp`` – expiry timestamp (ISO 8601, 3 minutes after ``iat``)
+- ``sid`` – session identifier (UUID without dashes)
+- ``roles`` – array of role name strings, e.g. ``["SystemAdministrator"]``
 
-Authentication Mechanisms
--------------------------
+Available Roles
+~~~~~~~~~~~~~~~
 
-Three mechanisms are accepted, in order of precedence:
+- ``SystemAdministrator`` – full access to all endpoints
+- ``GlobalAppAdministrator`` – application-level administration
+- ``AppAdministrator`` – per-application administration
+- ``AppUser`` – standard user access
 
-1. ``x-access-token`` HTTP header
-2. ``Authorization: Bearer <token>`` HTTP header
-3. ``access_token`` query parameter
-
-.. code-block:: http
-
-   GET /api/v1/system/information HTTP/1.1
-   Host: 192.168.1.100:1990
-   Authorization: Bearer eyJhbGciOiJFZERTQSIs...
-
-Authorization Scopes
---------------------
-
-.. list-table:: Permission levels
-   :header-rows: 1
-
-   * - Function
-     - Required Role
-     - Description
-   * - ``withSysAdminAuth``
-     - SystemAdministrator
-     - Required for most write operations and sensitive reads
-   * - ``withAuth``
-     - Any authenticated user
-     - Used for session management (close own session)
-   * - *(none)*
-     - *(none)*
-     - Public endpoints (ping, system clock read, system metrics, login)
-
-User Roles
-----------
-
-.. list-table:: Roles
-   :header-rows: 1
-
-   * - Role (numeric)
-     - Role name (string in JWT)
-     - Privileges
-   * - 0
-     - ``SystemAdministrator``
-     - Full access to all endpoints
-   * - 1
-     - ``GlobalAppAdministrator``
-     - Read access to public endpoints
-   * - 2
-     - ``AppAdministrator``
-     - Read access to public endpoints
-   * - 3
-     - ``AppUser``
-     - Read access to public endpoints
-
-Session Lifecycle
------------------
-
-.. code-block:: text
-
-   +------------------+          +------------------+          +------------------+
-   |   Login Request  |          |  Access Token    |          |   Refresh Token  |
-   |   (credentials)  |---------->|  (3 min TTL)     |---------->|  (30 day TTL)   |
-   +------------------+          +------------------+          +------------------+
-                                                   |
-                                                   v
-                                          +------------------+
-                                          |   Logout / Expire |
-                                          +------------------+
-
-
-API Design Patterns
--------------------
-
-RESTful Collection Resources
-----------------------------
-
-Array-based resources follow a consistent CRUD pattern:
-
-.. list-table:: Collection operations
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Description
-   * - ``GET``
-     - ``{basePath}``
-     - List all resources
-   * - ``GET``
-     - ``{basePath}/<uuid>``
-     - Get a single resource by UUID
-   * - ``POST``
-     - ``{basePath}``
-     - Create a new resource (server generates UUID)
-   * - ``PUT``
-     - ``{basePath}/<uuid>``
-     - Modify an existing resource
-   * - ``DELETE``
-     - ``{basePath}/<uuid>``
-     - Remove a resource
-   * - ``PUT``
-     - ``{basePath}/disable/<uuid>``
-     - Enable/disable a resource (where ``allowDisable`` is true)
-   * - ``PUT``
-     - ``{basePath}/<uuid>/up``
-     - Move resource up in ordered list (where ``allowMoveUpDown`` is true)
-   * - ``PUT``
-     - ``{basePath}/<uuid>/down``
-     - Move resource down in ordered list (where ``allowMoveUpDown`` is true)
-   * - ``PUT``
-     - ``{basePath}``
-     - Replace all resources (where ``allowReplaceAll`` is true)
-
-Configuration Object Resources
-------------------------------
-
-Configuration objects expose read/write of their property map:
-
-.. list-table:: Config object operations
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Description
-   * - ``GET``
-     - ``{basePath}``
-     - Read all configuration properties
-   * - ``POST``
-     - ``{basePath}``
-     - Write configuration properties
-
-UUID Generation
----------------
-
-All server-side UUIDs are generated as 32-character hex strings (no dashes)
-using ``CryptoUtils.createUuidWithoutDashes()``.
-
-Pagination
-----------
-
-No pagination is implemented. All collection endpoints return the full
-array. For large collections (e.g., time-series), the client is expected
-to filter via query parameters.
-
-Body Size Limits
-----------------
-
-.. list-table:: Limits
-   :header-rows: 1
-
-   * - Endpoint category
-     - Max body size
-   * - General REST resources
-     - 1 MB (1,048,576 bytes)
-   * - Unit config write / icon upload
-     - 4 MB (4,194,304 bytes)
-   * - Unit icon upload
-     - 128 KB (131,072 bytes)
-   * - License import
-     - 100 KB (102,400 bytes)
-   * - Unit name
-     - 256 bytes
-   * - OpenVPN config
-     - 64 KB (65,536 bytes)
-   * - Firewall internet sharing
-     - 100 KB (102,400 bytes)
-   * - Auth (login/refresh/logout)
-     - 1 KB (1,000 bytes)
-   * - SMS
-     - 4 KB (4,096 bytes)
-   * - System clock
-     - 128 bytes
-   * - App control
-     - 10 bytes
-   * - Update chunk
-     - 4 MB (4,194,304 bytes)
-   * - Update upload start
-     - 1 KB (1,000 bytes)
-
-
-Resource Sections
------------------
-
-Ping
-----
-
-.. list-table:: Endpoints
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/ping``
-     - None
-     - Health check
-
-Request
-~~~~~~~
-
-No body or parameters required.
-
-Response
-~~~~~~~~
-
-.. code-block:: http
-
-   HTTP/1.1 200 OK
-
-
-Authentication
---------------
-
-Login
-~~~~~
-
-.. list-table::
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``POST``
-     - ``/api/v1/auth/login``
-     - None
-     - Authenticate and obtain tokens
-
-Request
-^^^^^^^
-
-.. list-table:: Body fields
-   :header-rows: 1
-
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``username``
-     - string
-     - Yes
-     - Login name of the user
-   * - ``password``
-     - string
-     - Yes
-     - Plain-text password (hashed server-side with SHA-256)
-
-.. code-block:: json
-
-   {
-       "username": "hubadmin",
-       "password": "secret123"
-   }
-
-Response
-^^^^^^^^
-
-**200 OK**
-
-.. code-block:: json
-
-   {
-       "accessToken": "eyJhbGciOiJFZERTQSIs...",
-       "tokenType": "Bearer",
-       "refreshToken": "a3f1c2e4b5d6478990abcdef12345678"
-   }
-
-**400 Bad Request** – body too large or missing fields
-
-**401 Unauthorized** – invalid credentials
-
-
-Refresh Access Token
+Authorization Header
 ~~~~~~~~~~~~~~~~~~~~
 
-.. list-table::
-   :header-rows: 1
+Authenticated requests must carry the access token in one of the following ways
+(listed in order of preference by the server):
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``POST``
-     - ``/api/v1/auth/refresh``
-     - None
-     - Exchange refresh token for new access token
+1. ``Authorization: Bearer <accessToken>``
+2. ``x-access-token: <accessToken>`` (custom header)
+3. ``?access_token=<accessToken>`` (query parameter, used by
+   :func:`hasSystemAdministratorAccessToken` for certain routes)
 
-Request
-^^^^^^^
+Most endpoints require the **SystemAdministrator** role. A small number of
+endpoints (ping, system information, system metrics, system clock read,
+licensing list, unit icon retrieval) are accessible without authentication.
 
-.. list-table:: Body fields
-   :header-rows: 1
+Session Lifecycle
+~~~~~~~~~~~~~~~~~
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``refreshToken``
-     - string
-     - Yes
-     - The refresh token obtained at login
+1. **Login** – exchange credentials for an access + refresh token pair.
+2. **Refresh** – exchange a refresh token for a new access token.
+3. **Logout** – invalidate the refresh token (and thus the session).
+4. **Close Session** – delete a specific session by its ID (requires a valid
+   access token belonging to that session).
 
-.. code-block:: json
+Endpoints
+~~~~~~~~~
 
-   {
-       "refreshToken": "a3f1c2e4b5d6478990abcdef12345678"
-   }
+POST /api/v1/auth/login
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-Response
-^^^^^^^^
+Authenticate with username and password.
 
-**200 OK**
+- **Authentication:** none
+- **Request body** (JSON, max 1000 bytes):
 
-.. code-block:: json
+  - ``username`` (string, required) – login name
+  - ``password`` (string, required) – plaintext password
 
-   {
-       "accessToken": "eyJhbGciOiJFZERTQSIs...",
-       "tokenType": "Bearer"
-   }
+  Example:
 
-**400 Bad Request** – body too large or missing ``refreshToken``
+  .. code-block:: json
 
-**401 Unauthorized** – unknown refresh token
+    {
+      "username": "hubadmin",
+      "password": "hubadmin"
+    }
 
-**500 Internal Server Error** – failed to create new access token
+- **Responses:**
 
+  - ``200 OK`` – body is JSON:
 
-Logout
-~~~~~~
+    .. code-block:: json
 
-.. list-table::
-   :header-rows: 1
+      {
+        "accessToken": "eyJhbGciOiJFZERTQSIs...",
+        "tokenType": "Bearer",
+        "refreshToken": "a1b2c3d4e5f6..."
+      }
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``POST``
-     - ``/api/v1/auth/logout``
-     - None
-     - Invalidate a session by refresh token
+  - ``400 Bad Request`` – body too large or missing fields
+  - ``401 Unauthorized`` – invalid credentials
 
-Request
-^^^^^^^
+POST /api/v1/auth/refresh
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. list-table:: Body fields
-   :header-rows: 1
+Obtain a new access token using a refresh token.
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``refreshToken``
-     - string
-     - Yes
-     - The refresh token to invalidate
+- **Authentication:** none
+- **Request body** (JSON, max 1000 bytes):
 
-.. code-block:: json
+  - ``refreshToken`` (string, required)
 
-   {
-       "refreshToken": "a3f1c2e4b5d6478990abcdef12345678"
-   }
+  Example:
 
-Response
-^^^^^^^^
+  .. code-block:: json
 
-**200 OK** – session removed
+    {
+      "refreshToken": "a1b2c3d4e5f6..."
+    }
 
-**400 Bad Request** – body too large or missing ``refreshToken``
+- **Responses:**
 
-**401 Unauthorized** – unknown refresh token
+  - ``200 OK`` – body is JSON:
 
+    .. code-block:: json
 
-Close Session
-~~~~~~~~~~~~~
+      {
+        "accessToken": "eyJhbGciOiJFZERTQSIs...",
+        "tokenType": "Bearer"
+      }
 
-.. list-table::
-   :header-rows: 1
+  - ``400 Bad Request`` – body too large or missing field
+  - ``401 Unauthorized`` – unknown or expired refresh token
+  - ``500 Internal Server Error`` – token creation failed
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``DELETE``
-     - ``/api/v1/sessions/<sessionId>``
-     - Any authenticated user
-     - Close a specific session (must be own session)
+POST /api/v1/auth/logout
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Path Parameters
-^^^^^^^^^^^^^^^
+Invalidate a session by its refresh token.
 
-.. list-table::
-   :header-rows: 1
+- **Authentication:** none
+- **Request body** (JSON, max 1000 bytes):
 
-   * - Parameter
-     - Type
-     - Description
-   * - ``sessionId``
-     - string (UUID)
-     - The session UUID to close
+  - ``refreshToken`` (string, required)
 
-Response
-^^^^^^^^
+- **Responses:**
 
-**200 OK** – session closed
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – body too large or missing field
+  - ``401 Unauthorized`` – unknown refresh token
 
-**401 Unauthorized** – no valid access token
+DELETE /api/v1/sessions/{sessionId}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**403 Forbidden** – token valid but ``sid`` claim does not match ``sessionId``
+Close a specific session. The caller's access token must belong to the same
+session (``sid`` claim must match ``sessionId``).
 
-**404 Not Found** – session does not exist
+- **Authentication:** valid access token (any role), ``sid`` must match
+- **Path parameter:**
+
+  - ``sessionId`` (string) – UUID of the session to close
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``401 Unauthorized`` – missing or invalid token
+  - ``403 Forbidden`` – token valid but ``sid`` does not match
+  - ``404 Not Found`` – session not found
 
 
 Users
 -----
 
-.. list-table:: Endpoints
-   :header-rows: 1
+.. _users:
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/users``
-     - SysAdmin
-     - List all users
-   * - ``GET``
-     - ``/api/v1/users/<uuid>``
-     - SysAdmin
-     - Get a single user
-   * - ``POST``
-     - ``/api/v1/users``
-     - SysAdmin
-     - Create a user
-   * - ``PUT``
-     - ``/api/v1/users/<uuid>``
-     - SysAdmin
-     - Modify a user
-   * - ``PUT``
-     - ``/api/v1/users/disable/<uuid>``
-     - SysAdmin
-     - Enable/disable a user
-   * - ``DELETE``
-     - ``/api/v1/users/<uuid>``
-     - SysAdmin
-     - Delete a user
+User management is exposed as a standard REST collection. The collection is a
+**plain JSON array of objects** (no ``"data"`` sub-key wrapper).
 
-User Schema
-~~~~~~~~~~~
+User Object Schema
+~~~~~~~~~~~~~~~~~~
 
-.. list-table:: Fields
-   :header-rows: 1
+- ``uuid`` (string, required) – unique identifier (auto-generated on create)
+- ``loginName`` (string, required) – unique login name
+- ``fullName`` (string, required) – display name
+- ``password`` (string, required on create, optional on modify) – plaintext
+  password; stored as SHA-256 hash server-side. **Never returned in GET
+  responses.**
+- ``role`` (integer, required) – one of:
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``uuid``
-     - string
-     - Auto-generated
-     - Unique identifier (32-char hex, no dashes)
-   * - ``loginName``
-     - string
-     - Yes (create)
-     - Unique login name
-   * - ``fullName``
-     - string
-     - Yes (create)
-     - Display name
-   * - ``password``
-     - string
-     - Yes (create) / optional (modify)
-     - Plain-text password; stored as SHA-256 hash. If omitted on modify, existing password is preserved.
-   * - ``passwordConfirm``
-     - string
-     - No
-     - Client-side confirmation; stripped server-side
-   * - ``role``
-     - int
-     - Yes (create)
-     - One of: 0 (SystemAdministrator), 1 (GlobalAppAdministrator), 2 (AppAdministrator), 3 (AppUser)
-   * - ``disabled``
-     - bool
-     - Auto-set
-     - Whether the account is disabled (default: false)
+  - ``0`` – SystemAdministrator
+  - ``1`` – GlobalAppAdministrator
+  - ``2`` – AppAdministrator
+  - ``3`` – AppUser
 
-Note: The ``password`` field is **never** returned in GET responses.
+- ``disabled`` (boolean, optional) – whether the account is disabled
+  (defaults to ``false`` on create)
 
-Create User
-~~~~~~~~~~~
+Endpoints
+~~~~~~~~~
 
-.. code-block:: json
-   :caption: POST /api/v1/users – Request
+GET /api/v1/users
+^^^^^^^^^^^^^^^^^^^
 
-   {
-       "loginName": "jdoe",
-       "fullName": "John Doe",
-       "password": "Str0ngP4ss!",
-       "role": 3
-   }
+List all users (passwords are stripped).
 
-.. code-block:: text
-   :caption: Response (200 OK)
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – JSON array:
 
-   7a3f1c2e4b5d6478990abcdef12345678
+  .. code-block:: json
 
-**409 Conflict** – ``loginName`` already exists
+    [
+      {
+        "uuid": "907cc14b665a47f2963907f344f7bb73",
+        "loginName": "hubadmin",
+        "fullName": "HUB Administrator",
+        "role": 0,
+        "disabled": false
+      }
+    ]
 
-**400 Bad Request** – missing required fields
+GET /api/v1/users/{uuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Modify User
-~~~~~~~~~~~
+Retrieve a single user.
 
-.. code-block:: json
-   :caption: PUT /api/v1/users/7a3f1c2e4b5d6478990abcdef12345678 – Request
+- **Authentication:** SystemAdministrator
+- **Path parameter:** ``uuid`` (string)
+- **Response ``200 OK``** – single user object (no password)
+- **Response ``404 Not Found``** – user not found
 
-   {
-       "loginName": "jdoe",
-       "fullName": "John Q. Doe",
-       "password": "NewP4ss!",
-       "role": 2,
-       "disabled": false
-   }
+POST /api/v1/users
+^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: text
-   :caption: Response (200 OK)
+Create a new user.
 
-   (empty body)
+- **Authentication:** SystemAdministrator
+- **Request body** (JSON):
 
-**400 Bad Request** – invalid data
+  .. code-block:: json
 
-**404 Not Found** – user UUID not found
+    {
+      "loginName": "operator1",
+      "fullName": "Operator One",
+      "password": "s3cret!",
+      "role": 3
+    }
 
-Delete User
-~~~~~~~~~~~
+- **Responses:**
 
-The ``hubadmin`` account cannot be deleted.
+  - ``200 OK`` – body is the new user's UUID (string)
+  - ``400 Bad Request`` – invalid body
+  - ``409 Conflict`` – a user with the same ``loginName`` already exists
 
-.. code-block:: text
-   :caption: Response (200 OK)
+PUT /api/v1/users/{uuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   (empty body)
+Modify an existing user.
 
-**400 Bad Request** – attempting to delete protected ``hubadmin`` account
+- **Authentication:** SystemAdministrator
+- **Path parameter:** ``uuid`` (string)
+- **Request body** (JSON):
 
-**404 Not Found** – user UUID not found
+  .. code-block:: json
 
+    {
+      "loginName": "operator1",
+      "fullName": "Operator One (renamed)",
+      "password": "newPass123",
+      "passwordConfirm": "newPass123",
+      "role": 3,
+      "disabled": false
+    }
+
+  Notes:
+
+  - ``password`` is optional. If omitted or empty, the existing password hash
+    is preserved.
+  - ``passwordConfirm`` is accepted but stripped before storage.
+  - If the user is not found and no password is supplied, the request fails.
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – invalid body
+  - ``404 Not Found`` – user not found
+
+DELETE /api/v1/users/{uuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Delete a user. The built-in ``hubadmin`` account cannot be deleted.
+
+- **Authentication:** SystemAdministrator
+- **Path parameter:** ``uuid`` (string)
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – attempt to delete the protected ``hubadmin`` account
+  - ``404 Not Found`` – user not found
+
+PUT /api/v1/users/disable/{uuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Enable or disable a user account.
+
+- **Authentication:** SystemAdministrator
+- **Path parameter:** ``uuid`` (string)
+- **Request body** (JSON):
+
+  .. code-block:: json
+
+    {
+      "disabled": true
+    }
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – invalid body
+  - ``404 Not Found`` – user not found
+
+
+.. _system:
 
 System
 ------
 
-Information
-~~~~~~~~~~~
+System-level endpoints cover device information, metrics, networking, storage,
+clock, mail, SMS, and configuration objects.
 
-.. list-table::
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/system/information``
-     - None
-     - Get system identification info
-
-Response
-^^^^^^^^
-
-**200 OK**
-
-.. code-block:: json
-
-   {
-       "systemClock": 1700000000,
-       "uptime": 123456,
-       "osVersion": "3.2.1 (Standard)",
-       "osLicenseValid": 1,
-       "osLicenseExpiryDate": "2025-12-31T23:59:59.000Z",
-       "ipAddresses": [
-           "192.168.1.100 (eth0)",
-           "172.16.0.5 (eth1)",
-           "192.168.123.1 (usb0)"
-       ]
-   }
-
-Metrics
-~~~~~~~
-
-.. list-table::
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/system/metrics``
-     - None
-     - Get real-time system metrics
-
-Response
-^^^^^^^^
-
-**200 OK**
-
-.. code-block:: json
-
-   {
-       "totalCpuUsage": 23.5,
-       "brokenDownCpuUsage": {
-           "user": 12.1,
-           "system": 5.3,
-           "idle": 80.1,
-           "iowait": 1.2,
-           "irq": 0.3,
-           "softirq": 1.5
-       },
-       "systemLoad": 0.42,
-       "memoryTotal": 512000000,
-       "memoryAvailable": 310000000,
-       "storageTotal": 7500000000,
-       "storageAvailable": 5200000000,
-       "storageBytesReadPerSecond": 1024,
-       "storageBytesWrittenPerSecond": 2048,
-       "eth0Rx": 1500,
-       "eth0Tx": 800,
-       "eth1Rx": 0,
-       "eth1Tx": 0,
-       "wlan0Rx": 0,
-       "wlan0Tx": 0,
-       "wwan0Rx": 0,
-       "wwan0Tx": 0
-   }
-
-Processes
+Endpoints
 ~~~~~~~~~
 
-.. list-table::
-   :header-rows: 1
+GET /api/v1/system/information
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/system/processes``
-     - SysAdmin
-     - List running processes
+Retrieve basic system information.
 
-Response
-^^^^^^^^
+- **Authentication:** none
+- **Response ``200 OK``** – JSON:
 
-**200 OK**
+  .. code-block:: json
 
-.. code-block:: json
+    {
+      "systemClock": 1721560000,
+      "uptime": 86400,
+      "osVersion": "1.2.3 (Stable)",
+      "osLicenseValid": 1,
+      "osLicenseExpiryDate": "2027-01-01",
+      "ipAddresses": [
+        "192.168.1.10 (eth0)",
+        "10.0.0.5 (wlan0)",
+        "192.168.123.1 (usb0)"
+      ]
+    }
 
-   [
-       {"pid": 1, "name": "systemd", "cpu": 0.1, "memory": 4500},
-       {"pid": 234, "name": "smac-server", "cpu": 2.3, "memory": 45000}
-   ]
+GET /api/v1/system/metrics
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Journal
-~~~~~~~
+Retrieve real-time system metrics.
 
-.. list-table::
-   :header-rows: 1
+- **Authentication:** none
+- **Response ``200 OK``** – JSON:
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/system/journal/recent``
-     - SysAdmin
-     - Get recent system journal messages
+  .. code-block:: json
 
-Response
-^^^^^^^^
+    {
+      "totalCpuUsage": 23.5,
+      "brokenDownCpuUsage": { "user": 10.2, "system": 5.1, "idle": 84.7 },
+      "systemLoad": 0.42,
+      "memoryTotal": 2097152,
+      "memoryAvailable": 1572864,
+      "storageTotal": 16106127360,
+      "storageAvailable": 12884901888,
+      "storageBytesReadPerSecond": 1024,
+      "storageBytesWrittenPerSecond": 2048,
+      "eth0Rx": 1500000,
+      "eth0Tx": 800000,
+      "eth1Rx": 0,
+      "eth1Tx": 0,
+      "wlan0Rx": 500000,
+      "wlan0Tx": 300000,
+      "wwan0Rx": 0,
+      "wwan0Tx": 0
+    }
 
-**200 OK** – plain text, newline-separated log messages
+GET /api/v1/system/journal/recent
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: text
+Retrieve the most recent system journal messages.
 
-   Jan 15 10:23:01 smac-server[234]: System started
-   Jan 15 10:23:02 smac-server[234]: MQTT broker connected
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – plain-text, one message per line
 
+GET /api/v1/system/processes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Clock
-~~~~~
+List running system processes.
 
-.. list-table:: Clock endpoints
-   :header-rows: 1
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – JSON array of process objects
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/system/clock``
-     - None
-     - Get current system clock (epoch seconds)
-   * - ``POST``
-     - ``/api/v1/system/clock``
-     - SysAdmin
-     - Set system clock
-   * - ``POST``
-     - ``/api/v1/system/hardware-clocks``
-     - SysAdmin
-     - Synchronize hardware clocks to system time
+GET /api/v1/system/networking/available-wireless-networks
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Set Clock Request
-^^^^^^^^^^^^^^^^^
+Scan for available Wi-Fi networks.
 
-.. code-block:: text
-   :caption: POST /api/v1/system/clock – Body (plain text, < 128 bytes)
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – JSON array of network objects
 
-   1700000000
+GET /api/v1/system/clock
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The value must be a valid epoch timestamp (> 1234567890, i.e., after 2009).
+Read the current system clock (seconds since epoch).
 
-**400 Bad Request** – body too large or value not a valid epoch
+- **Authentication:** none
+- **Response ``200 OK``** – JSON:
 
-**200 OK** – clock set, hardware clocks synchronized, licenses reloaded
+  .. code-block:: json
 
+    1721560000
 
-Wireless Networks
-~~~~~~~~~~~~~~~~~
+POST /api/v1/system/clock
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. list-table::
-   :header-rows: 1
+Set the system clock.
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/system/networking/available-wireless-networks``
-     - SysAdmin
-     - Scan and list available Wi-Fi networks
+- **Authentication:** SystemAdministrator
+- **Request body** – plain-text Unix timestamp (seconds), max 128 bytes.
+  Value must be greater than ``1234567890``.
 
-Response
-^^^^^^^^
+  Example: ``1721560000``
 
-**200 OK**
+- **Responses:**
 
-.. code-block:: json
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – body too large or value out of range
 
-   [
-       {"ssid": "MyNetwork", "signalStrength": -45, "channel": 6, "encryption": "WPA2"},
-       {"ssid": "GuestWiFi", "signalStrength": -70, "channel": 11, "encryption": "WPA3"}
-   ]
+POST /api/v1/system/hardware-clocks
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Synchronise hardware clocks to the current system time.
 
-Storage
-~~~~~~~
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – empty body
 
-.. list-table::
-   :header-rows: 1
+POST /api/v1/system/openvpn/client/config
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/storage/usage``
-     - SysAdmin
-     - Get detailed storage partition usage
+Write an OpenVPN client configuration file and restart the service.
 
-Response
-^^^^^^^^
+- **Authentication:** SystemAdministrator
+- **Request body** – raw OpenVPN config text, max 64 KiB
+- **Responses:**
 
-**200 OK** – JSON array of partition usage objects
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – body too large
+  - ``500 Internal Server Error`` – failed to write file
 
+GET /api/v1/storage/usage
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Device Identification
-~~~~~~~~~~~~~~~~~~~~~
+Retrieve storage usage details.
 
-.. list-table::
-   :header-rows: 1
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – JSON object with storage partition details
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``POST``
-     - ``/api/v1/system/device/identify``
-     - SysAdmin
-     - Trigger LED blink for physical device identification
+POST /api/v1/storage/docker/cleanup
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Response
-^^^^^^^^
+Remove all Docker files except volumes.
 
-**200 OK** – LEDs blink for 10 seconds
+- **Authentication:** SystemAdministrator
+- **Responses:**
 
+  - ``200 OK`` – empty body
+  - ``500 Internal Server Error`` – cleanup failed
 
-Reboot
-~~~~~~
+POST /api/v1/storage/docker/reset
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. list-table::
-   :header-rows: 1
+Remove all Docker files including volumes.
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``POST``
-     - ``/api/v1/system/reboot``
-     - SysAdmin
-     - Reboot the device
+- **Authentication:** SystemAdministrator
+- **Responses:**
 
-Response
-^^^^^^^^
+  - ``200 OK`` – empty body
+  - ``500 Internal Server Error`` – reset failed
 
-**200 OK** – reboot initiated (response may not arrive before shutdown)
+DELETE /api/v1/storage/docker/volumes/{name}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Remove a specific Docker volume.
 
-Email Test
-~~~~~~~~~~
+- **Authentication:** SystemAdministrator
+- **Path parameter:** ``name`` (string) – volume name
+- **Responses:**
 
-.. list-table::
-   :header-rows: 1
+  - ``200 OK`` – body is the volume name
+  - ``404 Not Found`` – volume not found
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``POST``
-     - ``/api/v1/system/mail/test``
-     - SysAdmin
-     - Send a test email using provided SMTP settings
+POST /api/v1/system/device/identify
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Request
-^^^^^^^
+Trigger the device identification LED blink sequence (10 seconds).
 
-.. list-table:: Body fields
-   :header-rows: 1
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – empty body
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``enabled``
-     - bool
-     - Yes
-     - SMTP enabled
-   * - ``serverAddress``
-     - string
-     - Yes
-     - SMTP server hostname
-   * - ``serverPort``
-     - int
-     - Yes
-     - SMTP server port
-   * - ``encryptionMode``
-     - int
-     - Yes
-     - 0: none, 1: SSL, 2: TLS
-   * - ``authenticationMethod``
-     - int
-     - Yes
-     - 0: none, 1: PLAIN, 2: LOGIN, 3: CRAM-MD5
-   * - ``username``
-     - string
-     - No
-     - SMTP username
-   * - ``password``
-     - string
-     - No
-     - SMTP password
-   * - ``senderAddress``
-     - string
-     - Yes
-     - From address
-   * - ``senderName``
-     - string
-     - No
-     - From display name
-   * - ``recipient``
-     - string
-     - Yes
-     - Test recipient address
-   * - ``subject``
-     - string
-     - Yes
-     - Email subject
-   * - ``body``
-     - string
-     - Yes
-     - Email body
+POST /api/v1/system/reboot
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Reboot the device.
+
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – empty body
+
+POST /api/v1/system/mail/test
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Send a test e-mail using the supplied SMTP settings (does not persist them).
+
+- **Authentication:** SystemAdministrator
+- **Request body** (JSON):
+
+  .. code-block:: json
+
+    {
+      "serverAddress": "smtp.example.com",
+      "serverPort": 587,
+      "encryptionMode": 2,
+      "authenticationMethod": 2,
+      "username": "mailer@example.com",
+      "password": "secret",
+      "senderName": "SIINEOS Hub",
+      "senderAddress": "hub@example.com",
+      "recipient": "admin@example.com",
+      "subject": "Test",
+      "body": "This is a test e-mail."
+    }
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – e-mail could not be sent
+
+POST /api/v1/sms
+^^^^^^^^^^^^^^^^^^
+
+Send an SMS message via the cellular modem.
+
+- **Authentication:** SystemAdministrator
+- **Request body** (JSON, max 4 KiB):
+
+  .. code-block:: json
+
+    {
+      "recipientNumbers": "+4915112345678,+491529876543",
+      "text": "Alert: Temperature high on Unit 3"
+    }
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – missing fields or body too large
+  - ``500 Internal Server Error`` – SMS send failed
+
+System Configuration Objects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+System settings are exposed as **configuration objects**. In the JSON payload,
+each property is wrapped in a ``"data"`` sub-key. For example:
 
 .. code-block:: json
 
-   {
-       "enabled": true,
-       "serverAddress": "smtp.example.com",
-       "serverPort": 587,
-       "encryptionMode": 2,
-       "authenticationMethod": 2,
-       "username": "alerts@example.com",
-       "password": "secret",
-       "senderAddress": "alerts@example.com",
-       "senderName": "SIINEOS Alerts",
-       "recipient": "admin@example.com",
-       "subject": "Test Alert",
-       "body": "This is a test email from SIINEOS."
-   }
+  {
+    "hostname": { "data": "hub-gm100-abc123" },
+    "deviceName": { "data": "Central Gateway" },
+    "location": { "data": "Building 1, Room 234" }
+  }
 
-Response
-^^^^^^^^
+The following configuration objects are available:
 
-**200 OK** – email sent successfully
+- ``GET/POST /api/v1/system/config/datetime`` – timezone, NTP server, browser
+  auto-sync
+- ``GET/POST /api/v1/system/config/eth0`` – Ethernet 1 settings (mode, IP,
+  DHCP server, etc.)
+- ``GET/POST /api/v1/system/config/eth1`` – Ethernet 2 settings
+- ``GET/POST /api/v1/system/config/wlan0`` – Wi-Fi settings (SSID, passphrase,
+  channel, etc.)
+- ``GET/POST /api/v1/system/config/wwan0`` – cellular modem settings (APN, PIN,
+  roaming, etc.)
+- ``GET/POST /api/v1/system/config/device`` – hostname, device name, location
+- ``GET/POST /api/v1/system/config/communication-leds`` – LED target
+  assignments (red, green)
+- ``GET/POST /api/v1/system/config/debugging`` – debug/trace logging, filter
+  rules, process metrics
+- ``GET/POST /api/v1/system/config/services`` – SSH, VictoriaMetrics, Docker,
+  memory monitor, MQTT broker, OpenVPN
+- ``GET/POST /api/v1/system/config/tls`` – CA certificate, device certificate,
+  private key (base64-encoded PEM)
+- ``GET/POST /api/v1/system/config/smtp`` – SMTP server, port, encryption,
+  authentication, sender, password
 
-**400 Bad Request** – email failed to send
+All configuration object endpoints require **SystemAdministrator**
+authentication.
 
+Example – reading the device configuration:
 
-SMS
-~~~
+.. code-block:: http
 
-.. list-table::
-   :header-rows: 1
+  GET /api/v1/system/config/device HTTP/1.1
+  Authorization: Bearer <accessToken>
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``POST``
-     - ``/api/v1/sms``
-     - SysAdmin
-     - Send an SMS message
-
-Request
-^^^^^^^
-
-.. list-table:: Body fields
-   :header-rows: 1
-
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``recipientNumbers``
-     - string
-     - Yes
-     - Comma-separated phone numbers
-   * - ``text``
-     - string
-     - Yes
-     - SMS text content
+Example response:
 
 .. code-block:: json
 
-   {
-       "recipientNumbers": "+4915123456789,+491609876543",
-       "text": "Alert: High temperature on sensor T1"
-   }
+  {
+    "name": { "data": "Central Gateway" },
+    "uuid": { "data": "abc123def456" },
+    "state": { "data": true },
+    "location": { "data": "Building 1, Room 234" }
+  }
 
-Response
-^^^^^^^^
+Example – writing the device configuration:
 
-**200 OK** – SMS sent
+.. code-block:: http
 
-**400 Bad Request** – missing/empty fields or body too large
-
-**500 Internal Server Error** – modem/SMS send failed
-
-
-OpenVPN
-~~~~~~~
-
-.. list-table::
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``POST``
-     - ``/api/v1/system/openvpn/client/config``
-     - SysAdmin
-     - Upload OpenVPN client configuration
-
-Request
-^^^^^^^
-
-Body: raw OpenVPN configuration file content (text, max 64 KB).
-
-Response
-^^^^^^^^
-
-**200 OK** – config written and service restarted
-
-**400 Bad Request** – body too large
-
-**500 Internal Server Error** – failed to write config file
-
-
-System Configuration
-~~~~~~~~~~~~~~~~~~~~
-
-.. list-table:: Config object endpoints
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/system/config/<object>``
-     - SysAdmin
-     - Read configuration object
-   * - ``POST``
-     - ``/api/v1/system/config/<object>``
-     - SysAdmin
-     - Write configuration object
-
-Available ``<object>`` values:
-
-.. list-table::
-   :header-rows: 1
-
-   * - Object ID
-     - Description
-   * - ``datetime``
-     - Timezone, NTP server, browser auto-sync
-   * - ``eth0``
-     - Ethernet 1 settings (mode, IP, DHCP server)
-   * - ``eth1``
-     - Ethernet 2 settings
-   * - ``wlan0``
-     - Wi-Fi settings
-   * - ``wwan0``
-     - Cellular (WWAN) settings
-   * - ``device``
-     - Device name, hostname, location
-   * - ``communication-leds``
-     - Communication LED targets
-   * - ``debugging``
-     - Debug/trace logging, filter rules
-   * - ``services``
-     - SSH, VictoriaMetrics, Docker, MQTT broker, memory monitor
-   * - ``tls``
-     - TLS certificates (CA, device cert, private key)
-   * - ``smtp``
-     - SMTP email settings
-
-Example – Read device settings:
+  POST /api/v1/system/config/device HTTP/1.1
+  Authorization: Bearer <accessToken>
+  Content-Type: application/json
 
 .. code-block:: json
-   :caption: GET /api/v1/system/config/device – Response (200 OK)
 
-   {
-       "name": "hub-gm100-abc123",
-       "location": "Building 1, Room 234"
-   }
-
-Example – Write device settings:
-
-.. code-block:: json
-   :caption: POST /api/v1/system/config/device – Request
-
-   {
-       "name": "Central Gateway",
-       "location": "Rooftop Antenna"
-   }
+  {
+    "name": { "data": "Central Gateway (renamed)" },
+    "location": { "data": "Building 2, Room 100" }
+  }
 
 
 System Update
 -------------
 
-.. list-table:: Endpoints
-   :header-rows: 1
+.. _system-update:
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``POST``
-     - ``/api/v1/system/update/upload/start``
-     - SysAdmin
-     - Begin uploading an update bundle
-   * - ``POST``
-     - ``/api/v1/system/update/upload/chunk``
-     - SysAdmin
-     - Upload a data chunk
-   * - ``GET``
-     - ``/api/v1/system/update/install/state``
-     - SysAdmin
-     - Query installation progress
-   * - ``GET``
-     - ``/api/v1/system/update/error``
-     - SysAdmin
-     - Get last update error
+The system update flow is a multi-step process: start an upload, send chunks,
+then poll for installation state.
 
-Upload Start
-~~~~~~~~~~~~
+Endpoints
+~~~~~~~~~
 
-Request
-^^^^^^^
+POST /api/v1/system/update/upload/start
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. list-table:: Body fields
-   :header-rows: 1
+Begin a new update bundle upload.
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``bytesToReceive``
-     - int
-     - Yes
-     - Total expected file size in bytes (1 KB – 256 MB)
+- **Authentication:** SystemAdministrator
+- **Request body** (JSON, max 1000 bytes):
 
-.. code-block:: json
+  .. code-block:: json
 
-   {
-       "bytesToReceive": 134217728
-   }
+    {
+      "bytesToReceive": 536870912
+    }
 
-Response
-^^^^^^^^
+  - ``bytesToReceive`` (integer, required) – total size of the upload in bytes.
+    Must be ≥ 1024 and ≤ 256 MiB.
 
-**200 OK** – ready to accept chunks
+- **Responses:**
 
-**400 Bad Request** – body too large, size < 1 KB, or size > 256 MB
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – body too large, size too small, or size limit
+    exceeded
+  - ``500 Internal Server Error`` – failed to open output file
 
-**500 Internal Server Error** – failed to open output file
+POST /api/v1/system/update/upload/chunk
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Upload Chunk
-~~~~~~~~~~~~
+Upload a chunk of the update bundle.
 
-Request: raw binary data (max 4 MB per chunk).
+- **Authentication:** SystemAdministrator
+- **Request body** – raw binary data, max 4 MiB per chunk
+- **Responses:**
 
-Response
-^^^^^^^^
+  - ``200 OK`` – body is the current byte offset (string), e.g. ``"1048576"``
+  - ``400 Bad Request`` – chunk too large, file not open, or size limit
+    exceeded
 
-**200 OK** – body contains the current byte offset as a string
+GET /api/v1/system/update/install/state
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: text
-   :caption: Response body (200 OK)
+Poll the current installation progress.
 
-   5242880
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – JSON:
 
-When the total received equals ``bytesToReceive``, the update installation
-begins automatically.
+  .. code-block:: json
 
-**400 Bad Request** – chunk too large, file not open, or size limit exceeded
+    {
+      "message": "Installing update bundle...",
+      "progress": 45
+    }
 
-Installation State
-~~~~~~~~~~~~~~~~~~
+GET /api/v1/system/update/error
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Response
-^^^^^^^^
+Retrieve error data from the last (or current) update attempt.
 
-**200 OK**
-
-.. code-block:: json
-
-   {
-       "message": "Installing system update…",
-       "progress": 45
-   }
-
-Error
-~~~~~
-
-Response
-^^^^^^^^
-
-**200 OK** – body contains the error message string (or empty if no error)
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – plain-text error description (may be empty)
 
 
-Time Series Database (VictoriaMetrics)
+Time-Series Database (VictoriaMetrics)
 --------------------------------------
 
-.. list-table:: Endpoints
-   :header-rows: 1
+.. _timeseries:
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/vmetrics/timeseries``
-     - SysAdmin
-     - List available time series
-   * - ``GET``
-     - ``/api/v1/vmetrics/export/csv``
-     - SysAdmin
-     - Export metric data as CSV (streamed)
-   * - ``POST``
-     - ``/api/v1/vmetrics/timeseries/delete``
-     - SysAdmin
-     - Delete time series
-   * - ``POST``
-     - ``/api/v1/vmetrics/reset``
-     - SysAdmin
-     - Reset (restart) VictoriaMetrics service
+Endpoints for querying, exporting, and managing time-series data stored in the
+local VictoriaMetrics instance.
 
-List Time Series
-~~~~~~~~~~~~~~~~
+Endpoints
+~~~~~~~~~
 
-.. list-table:: Query parameters
-   :header-rows: 1
+GET /api/v1/vmetrics/timeseries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   * - Parameter
-     - Type
-     - Required
-     - Description
-   * - ``start``
-     - string (epoch ms)
-     - Yes
-     - Start of time range (13+ digits)
-   * - ``end``
-     - string (epoch ms)
-     - Yes
-     - End of time range (13+ digits)
+Retrieve the list of available time-series (metric labels) for a given time
+range.
 
-.. code-block:: http
+- **Authentication:** SystemAdministrator
+- **Query parameters:**
 
-   GET /api/v1/vmetrics/timeseries?start=1700000000000&end=1700086400000
-   Authorization: Bearer <token>
+  - ``start`` (string, required) – start timestamp in milliseconds (≥ 13
+    digits)
+  - ``end`` (string, required) – end timestamp in milliseconds (≥ 13 digits)
 
-Response
-^^^^^^^^
+- **Responses:**
 
-**200 OK** – JSON array of series metadata
+  - ``200 OK`` – JSON array of series descriptors:
 
-.. code-block:: json
+    .. code-block:: json
 
-   [
-       {"name": "eth0_rx[unit=eth0][signal=rx_bytes](avg)", "hash": "a1b2c3d4e5f6"},
-       {"name": "cpu_usage[unit=hub01][signal=load](avg)", "hash": "f6e5d4c3b2a1"}
-   ]
+      [
+        { "name": "eth0_rx[unit=Gateway][signal=Throughput]", "hash": "a1b2c3d4e5f6" },
+        { "name": "cpu_usage[unit=Gateway]", "hash": "f6e5d4c3b2a1" }
+      ]
 
-**202 Accepted** – labels are still being fetched; retry later
+  - ``202 Accepted`` – labels are still being fetched; retry later
+  - ``400 Bad Request`` – missing or invalid ``start``/``end``
 
-**400 Bad Request** – missing or invalid ``start``/``end``
+GET /api/v1/vmetrics/export/csv
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Export CSV
-~~~~~~~~~~
+Export time-series data as a CSV file (chunked/streaming response).
 
-.. list-table:: Query parameters
-   :header-rows: 1
+- **Authentication:** SystemAdministrator
+- **Query parameters:**
 
-   * - Parameter
-     - Type
-     - Required
-     - Description
-   * - ``start``
-     - string (epoch ms)
-     - Yes
-     - Start of time range
-   * - ``end``
-     - string (epoch ms)
-     - Yes
-     - End of time range
-   * - ``step``
-     - int (seconds)
-     - No
-     - Query step size (default: 60)
-   * - ``rollup``
-     - string
-     - No
-     - Rollup functions: comma-separated from ``min``, ``max``, ``avg``, ``sum``, ``cnt``
-   * - ``series``
-     - string
-     - Yes
-     - Comma-separated list of series hashes
-   * - ``decimalSeparator``
-     - string
-     - No
-     - Decimal separator for output (default: ``.``)
-   * - ``dateTimeFormat``
-     - string
-     - No
-     - One of: ``timestamp``, ``local``, ``utc``, ``localized``, ``iso`` (default: ``timestamp``)
-   * - ``dateTimeLocale``
-     - string
-     - No
-     - Locale code, e.g. ``de_DE``, ``C`` (default: ``C``)
+  - ``start`` (string, required) – start timestamp in milliseconds
+  - ``end`` (string, required) – end timestamp in milliseconds
+  - ``step`` (string, optional) – step size in seconds (default ``60``)
+  - ``rollup`` (string, optional) – comma-separated rollup functions:
+    ``min``, ``max``, ``avg``, ``sum``, ``cnt``
+  - ``series`` (string, required) – comma-separated list of series hashes
+  - ``decimalSeparator`` (string, optional) – ``"."`` (default) or `","`
+  - ``dateTimeFormat`` (string, optional) – ``timestamp`` (default),
+    ``local``, ``utc``, ``localized``, ``iso``
+  - ``dateTimeLocale`` (string, optional) – locale string, e.g. ``de_DE``
+    (default ``C``)
 
-.. code-block:: http
+- **Response:**
 
-   GET /api/v1/vmetrics/export/csv?start=1700000000000&end=1700086400000&step=60&rollup=avg&series=a1b2c3d4e5f6,f6e5d4c3b2a1&decimalSeparator=,
-   Authorization: Bearer <token>
+  - ``200 OK`` – chunked ``text/plain`` CSV with
+    ``Content-Disposition: attachment; filename="SIINEOS-VictoriaMetrics-Export_<start>_<end>.csv"``
+  - ``400 Bad Request`` – invalid parameters
+  - ``401 Unauthorized`` – missing/invalid token
 
-Response
-^^^^^^^^
+  CSV format: semicolon-separated. First column is the timestamp (formatted
+  according to ``dateTimeFormat``), subsequent columns are one per requested
+  series.
 
-**200 OK** – streamed CSV with ``Content-Disposition: attachment``
+POST /api/v1/vmetrics/timeseries/delete
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: text
-   :caption: Response headers and body
+Delete one or more time-series from the database.
 
-   Content-Type: text/plain
-   Content-Disposition: attachment; filename="SIINEOS-VictoriaMetrics-Export_1700000000000_1700086400000.csv"
+- **Authentication:** SystemAdministrator
+- **Request body** (JSON): array of series hash strings
 
-   Timestamp;eth0_rx[unit=eth0][signal=rx_bytes](avg);cpu_usage[unit=hub01][signal=load](avg)
-   1700000000;1523.45;0.42
-   1700000060;1498.12;0.38
-   ...
+  .. code-block:: json
 
-**400 Bad Request** – invalid parameters
+    ["a1b2c3d4e5f6", "f6e5d4c3b2a1"]
 
-**401 Unauthorized** – missing/invalid token
+- **Responses:**
 
-Delete Time Series
-~~~~~~~~~~~~~~~~~~
+  - ``200 OK`` – empty body (deletion successful)
+  - ``400 Bad Request`` – empty or invalid body
+  - ``404 Not Found`` – one or more series not found
+  - ``500 Internal Server Error`` – HTTP error during deletion
 
-.. code-block:: json
-   :caption: POST /api/v1/vmetrics/timeseries/delete – Request
+POST /api/v1/vmetrics/reset
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   ["a1b2c3d4e5f6", "f6e5d4c3b2a1"]
+Reset (wipe) the VictoriaMetrics database.
 
-Response
-^^^^^^^^
+- **Authentication:** SystemAdministrator
+- **Responses:**
 
-**200 OK** – series deleted (or proxied status from VictoriaMetrics)
-
-**400 Bad Request** – empty or missing array
-
-**404 Not Found** – a series hash does not exist
-
-**500 Internal Server Error** – HTTP error from VictoriaMetrics
-
-Reset VictoriaMetrics
-~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: text
-   :caption: POST /api/v1/vmetrics/reset – Response (200 OK)
-
-   (empty body)
-
-**500 Internal Server Error** – service restart failed
+  - ``200 OK`` – empty body
+  - ``500 Internal Server Error`` – reset failed
 
 
 I/O Management
 --------------
 
-Overview
---------
-
-I/O units represent physical or virtual data sources (sensors, fieldbus
-nodes, Modbus devices, synthetic signals). Each unit contains **signals**
-(measurement points) and optionally **ports** (physical connection points).
-
-.. list-table:: I/O endpoint summary
-   :header-rows: 1
-
-   * - Area
-     - Base Path
-   * - Units
-     - ``/api/v1/io/units``
-   * - Signals
-     - ``/api/v1/io/units/<unitUuid>/signals``
-   * - Ports
-     - ``/api/v1/io/units/<unitUuid>/ports/<portUuid>``
-   * - Connections
-     - ``/api/v1/io/connections``
-   * - Synthetic Signals
-     - ``/api/v1/io/synthetic/signals``
-   * - Signal Processing (default)
-     - ``/api/v1/io/signal-processing/config/default``
-   * - Modbus Server
-     - ``/api/v1/io/endpoints/modbus``
-
-
-I/O Units
----------
-
-.. list-table:: Unit endpoints
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/io/units``
-     - SysAdmin
-     - Get UUIDs of all I/O units
-   * - ``POST``
-     - ``/api/v1/io/units``
-     - SysAdmin
-     - Create a new unit for a provider
-   * - ``GET``
-     - ``/api/v1/io/units/<unitUuid>``
-     - SysAdmin
-     - Get information about a specific I/O unit
-   * - ``DELETE``
-     - ``/api/v1/io/units/<uuid>``
-     - SysAdmin
-     - Remove a unit
-   * - ``GET``
-     - ``/api/v1/io/units/<uuid>/config``
-     - SysAdmin
-     - Read full unit configuration
-   * - ``PUT``
-     - ``/api/v1/io/units/<uuid>/config``
-     - SysAdmin
-     - Write full unit configuration
-   * - ``GET``
-     - ``/api/v1/io/units/<uuid>/config/<objectId>``
-     - SysAdmin
-     - Read a specific config sub-object
-   * - ``PUT``
-     - ``/api/v1/io/units/<uuid>/config/<objectId>``
-     - SysAdmin
-     - Write a specific config sub-object
-   * - ``PUT``
-     - ``/api/v1/io/units/<uuid>/name``
-     - SysAdmin
-     - Set unit display name
-   * - ``PUT``
-     - ``/api/v1/io/units/<uuid>/upstream``
-     - SysAdmin
-     - Set upstream unit/port
-   * - ``GET``
-     - ``/api/v1/io/units/<uuid>/icon``
-     - None
-     - Get unit icon (binary)
-   * - ``PUT``
-     - ``/api/v1/io/units/<uuid>/icon``
-     - SysAdmin
-     - Set unit icon (binary, max 128 KB)
-   * - ``DELETE``
-     - ``/api/v1/io/units/<uuid>/icon``
-     - SysAdmin
-     - Clear custom icon
-   * - ``POST``
-     - ``/api/v1/io/units/<uuid>/control/<action>``
-     - SysAdmin
-     - Provider-specific control action
-
-Create Unit
-~~~~~~~~~~~
-
-.. code-block:: text
-   :caption: POST /api/v1/io/units – Body (plain text: provider identifier)
-
-   modbus_client
+.. _io-management:
 
-Response
-^^^^^^^^
+The I/O subsystem manages **units** (physical or virtual I/O devices),
+**signals** (measurable or controllable channels within a unit), and **ports**
+(connection points on a unit). All endpoints require **SystemAdministrator**
+authentication unless noted otherwise.
 
-**200 OK** – body contains the new unit UUID
+Units
+~~~~~
 
-.. code-block:: text
+GET /api/v1/io/units
+^^^^^^^^^^^^^^^^^^^^^^^
 
-   907cc14b665a47f2963907f344f7bb73
+List all I/O unit UUIDs.
 
-**400 Bad Request** – provider identifier not found
+- **Response ``200 OK``** – JSON array of UUID strings:
 
-Remove Unit
-~~~~~~~~~~~
+  .. code-block:: json
 
-.. code-block:: text
-   :caption: DELETE /api/v1/io/units/907cc14b665a47f2963907f344f7bb73 – Response (200 OK)
+    ["907cc14b665a47f2963907f344f7bb73", "a1b2c3d4e5f60718293a4b5c6d7e8f90"]
 
-   (empty body)
-
-**404 Not Found** – unit not found
-
-Read Unit Config
-~~~~~~~~~~~~~~~~
-
-Response
-^^^^^^^^
-
-**200 OK** – full serialized configuration including all config objects and items.
-
-.. code-block:: json
-
-   {
-       "objects": {
-           "general": {
-               "name": "My Modbus Device",
-               "state": true,
-               "uuid": "907cc14b665a47f2963907f344f7bb73",
-               "providerId": "modbus_client",
-               "upstreamUnit": "",
-               "upstreamPort": "",
-               "signals": []
-           },
-           "data": {
-               "customIcon": ""
-           }
-       }
-   }
-
-Set Unit Name
-~~~~~~~~~~~~~
-
-.. code-block:: text
-   :caption: PUT /api/v1/io/units/<uuid>/name – Body (plain text, max 256 bytes)
-
-   Temperature Sensor Bank A
-
-Set Unit Upstream
-~~~~~~~~~~~~~~~~~
-
-.. code-block:: json
-   :caption: PUT /api/v1/io/units/<uuid>/upstream – Request
-
-   {
-       "unit": "a1b2c3d4e5f6478990abcdef12345678",
-       "port": "port-uuid-001"
-   }
-
-Unit Icon
-~~~~~~~~~
-
-GET returns the raw image bytes (or 404 if no icon set).
-
-PUT accepts raw image bytes (max 128 KB).
-
-.. code-block:: http
-   :caption: GET /api/v1/io/units/<uuid>/icon – Response
-
-   HTTP/1.1 200 OK
-   (binary image data)
-
-
-I/O Signals
------------
-
-.. list-table:: Signal endpoints
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/io/units/<unitUuid>/signals``
-     - SysAdmin
-     - Get UUIDs of all signals
-   * - ``POST``
-     - ``/api/v1/io/units/<unitUuid>/signals``
-     - SysAdmin
-     - Add a new signal
-   * - ``PUT``
-     - ``/api/v1/io/units/<unitUuid>/signals``
-     - SysAdmin
-     - Add multiple signals
-   * - ``GET``
-     - ``/api/v1/io/units/<unitUuid>/signals/<signalUuid>``
-     - SysAdmin
-     - Get information about a specific signal
-   * - ``DELETE``
-     - ``/api/v1/io/units/<unitUuid>/signals?uuids=<uuid1>,<uuid2>``
-     - SysAdmin
-     - Remove signals
-   * - ``POST``
-     - ``/api/v1/io/units/<unitUuid>/signals/<signalUuid>/duplicate``
-     - SysAdmin
-     - Duplicate a signal
-   * - ``GET``
-     - ``/api/v1/io/units/<unitUuid>/signals/<signalUuid>/config``
-     - SysAdmin
-     - Read signal configuration
-   * - ``PUT``
-     - ``/api/v1/io/units/<unitUuid>/signals/<signalUuid>/config``
-     - SysAdmin
-     - Write signal configuration
-   * - ``PUT``
-     - ``/api/v1/io/units/<unitUuid>/signals/config?uuids=<uuid1>,<uuid2>``
-     - SysAdmin
-     - Write config for multiple signals
-   * - ``PUT``
-     - ``/api/v1/io/units/<unitUuid>/signals/clear``
-     - SysAdmin
-     - Remove all signals from unit
-   * - ``PUT``
-     - ``/api/v1/io/units/<unitUuid>/signals/reset``
-     - SysAdmin
-     - Reset specific signals
-   * - ``POST``
-     - ``/api/v1/io/units/<unitUuid>/signals/<signalUuid>/control/<action>``
-     - SysAdmin
-     - Provider-specific signal control
-
-Signal Configuration Schema
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. list-table:: Signal config fields
-   :header-rows: 1
-
-   * - Field
-     - Type
-     - Description
-   * - ``name``
-     - string
-     - Display name
-   * - ``uuid``
-     - string
-     - System ID (read-only)
-   * - ``enabled``
-     - bool
-     - Signal enabled
-   * - ``vmetricsPushEnabled``
-     - bool
-     - Record to VictoriaMetrics
-   * - ``vmetricsPushInterval``
-     - int
-     - Recording interval in seconds (1–3600)
-   * - ``useCustomIdentifier``
-     - bool
-     - Use custom identifier instead of auto-generated
-   * - ``customIdentifier``
-     - string
-     - Custom identifier string
-   * - ``group``
-     - string
-     - Group/category label
-   * - ``dataSeriesSet``
-     - string
-     - Data series set label
-   * - ``siPrefix``
-     - int
-     - SI prefix (0=none, 1=G, 2=M, 3=k, 4=h, 6=d, 7=c, 8=m, 9=µ, 10=n, 11=p)
-   * - ``measurementUnit``
-     - string
-     - Unit string (e.g., "DegreeCelsius", "Watt", "Volt")
-   * - ``decimals``
-     - int
-     - Number of decimal places (0–5)
-   * - ``customDataType``
-     - int
-     - Override data type (0=keep, 1=bool, 5=float, 6=double, 7–10=int types, 13–16=small int)
-   * - ``visualizationType``
-     - string
-     - "none", "gauge", "led", "counter"
-   * - ``color``
-     - string
-     - Color for visualization
-   * - ``minimumValue``
-     - float
-     - Minimum expected value
-   * - ``maximumValue``
-     - float
-     - Maximum expected value
-
-Add Single Signal
-~~~~~~~~~~~~~~~~~
-
-.. code-block:: text
-   :caption: POST /api/v1/io/units/<unitUuid>/signals – Response (200 OK)
-
-   new-signal-uuid-here
-
-Add Multiple Signals
-~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: json
-   :caption: PUT /api/v1/io/units/<unitUuid>/signals – Request
-
-   [
-       {"name": "Temperature", "measurementUnit": "DegreeCelsius"},
-       {"name": "Humidity", "measurementUnit": "%"}
-   ]
-
-.. code-block:: json
-   :caption: Response (200 OK)
-
-   ["uuid-1", "uuid-2"]
-
-Remove Signals
-~~~~~~~~~~~~~~
-
-.. code-block:: http
-   :caption: DELETE request with query parameter
-
-   DELETE /api/v1/io/units/<unitUuid>/signals?uuids=uuid1,uuid2,uuid3
-   Authorization: Bearer <token>
-
-Duplicate Signal
-~~~~~~~~~~~~~~~~
-
-.. code-block:: json
-   :caption: POST /api/v1/io/units/<unitUuid>/signals/<signalUuid>/duplicate – Request
-
-   {
-       "name": "Temperature (Copy)"
-   }
-
-.. code-block:: text
-   :caption: Response (200 OK)
-
-   new-duplicated-signal-uuid
-
-Reset Signals
-~~~~~~~~~~~~~
-
-.. code-block:: json
-   :caption: PUT /api/v1/io/units/<unitUuid>/signals/reset – Request
-
-   ["signal-uuid-1", "signal-uuid-2"]
-
-Signal Control
-~~~~~~~~~~~~~~
-
-Provider-specific actions. The ``action`` path segment and body are
-provider-defined.
-
-.. code-block:: http
-
-   POST /api/v1/io/units/<unitUuid>/signals/<signalUuid>/control/calibrate
-   Authorization: Bearer <token>
-   Content-Type: application/octet-stream
-
-   (binary or text payload, max 4 MB)
-
-
-I/O Ports
----------
-
-.. list-table:: Port endpoints
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/io/units/<unitUuid>/ports/<portUuid>/config``
-     - SysAdmin
-     - Read port configuration
-   * - ``POST``
-     - ``/api/v1/io/units/<unitUuid>/ports/<portUuid>/config``
-     - SysAdmin
-     - Write port configuration
-
-Response
-^^^^^^^^
-
-**200 OK** – serialized port config object
-
-**404 Not Found** – unit or port not found
+GET /api/v1/io/units/{unitUuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Retrieve the announcement data for a single unit.
+
+- **Path parameter:** ``unitUuid`` (string)
+- **Response ``200 OK``** – JSON:
+
+  .. code-block:: json
+
+    {
+      "providerName": "Synthetic Signals",
+      "providerId": "synthetic_signals",
+      "providerType": 4,
+      "providerConnectivity": 0,
+      "uuid": "907cc14b665a47f2963907f344f7bb73",
+      "address": "",
+      "name": "Synthetic signals",
+      "location": "",
+      "enabled": true,
+      "connected": true,
+      "error": "",
+      "icon": "icon.svg",
+      "busy": false,
+      "signalsBrowsable": false,
+      "signalsResettable": false,
+      "signalAddressesContainPinAssignment": false,
+      "signals": ["sig-uuid-1", "sig-uuid-2"],
+      "upstreamUnit": "",
+      "upstreamPort": "",
+      "ports": []
+    }
+
+- **Response ``404 Not Found``** – unit not found
+
+POST /api/v1/io/units
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Create a new I/O unit instance for the given provider.
+
+- **Request body** – plain-text provider identifier (e.g. ``"modbus_client"``)
+- **Responses:**
+
+  - ``200 OK`` – body is the new unit's UUID
+  - ``400 Bad Request`` – provider not found
+
+DELETE /api/v1/io/units/{unitUuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Remove a unit and its configuration.
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – unit not found
+
+Unit Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Unit settings are stored as a **configuration object** with the ``"data"``
+sub-key pattern.
+
+GET /api/v1/io/units/{unitUuid}/config
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Read the full unit configuration.
+
+- **Response ``200 OK``** – JSON with ``"data"`` sub-keys:
+
+  .. code-block:: json
+
+    {
+      "general": {
+        "name": { "data": "My Modbus Unit" },
+        "uuid": { "data": "a1b2c3d4..." },
+        "state": { "data": true },
+        "providerId": { "data": "modbus_client" },
+        "upstreamUnit": { "data": "" },
+        "upstreamPort": { "data": "" },
+        "signals": { "data": [ ... ] }
+      },
+      "data": {
+        "customIcon": { "data": "" }
+      }
+    }
+
+PUT /api/v1/io/units/{unitUuid}/config
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Replace the full unit configuration.
+
+- **Request body** (JSON, max 4 MiB) – same structure as the GET response.
+  The ``providerId`` must match the unit's actual provider; the ``uuid`` is
+  overwritten with the path parameter.
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – invalid JSON or body too large
+  - ``404 Not Found`` – unit not found
+  - ``409 Conflict`` – provider ID mismatch
+
+GET /api/v1/io/units/{unitUuid}/config/{configObjectId}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Read a specific configuration sub-object (e.g. ``"general"``, ``"data"``, or a
+signal's ``"signal"`` object).
+
+- **Path parameters:** ``unitUuid``, ``configObjectId``
+- **Response ``200 OK``** – JSON with ``"data"`` sub-keys for that sub-object
+- **Response ``404 Not Found``** – unit or config object not found
+
+PUT /api/v1/io/units/{unitUuid}/config/{configObjectId}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Write a specific configuration sub-object.
+
+- **Request body** (JSON, max 4 MiB)
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – invalid JSON
+  - ``404 Not Found`` – unit or config object not found
+
+Unit Name, Icon, and Upstream
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+PUT /api/v1/io/units/{unitUuid}/name
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Rename a unit.
+
+- **Request body** – plain-text name, max 256 bytes
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – body too large
+  - ``404 Not Found`` – unit not found
+
+GET /api/v1/io/units/{unitUuid}/icon
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Retrieve the unit's custom icon (binary).
+
+- **Authentication:** none
+- **Query parameter:** ``<hash>`` (string) – hash of the icon data (for
+  cache-busting)
+- **Response ``200 OK``** – binary image data
+- **Response ``404 Not Found``** – unit not found
+
+PUT /api/v1/io/units/{unitUuid}/icon
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Upload a custom icon for the unit.
+
+- **Request body** – binary image data, max 128 KiB
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – body too large
+  - ``404 Not Found`` – unit not found
+
+DELETE /api/v1/io/units/{unitUuid}/icon
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Remove the custom icon (reverts to the provider default).
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – unit not found
+
+PUT /api/v1/io/units/{unitUuid}/upstream
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set the upstream unit and port for daisy-chained units.
+
+- **Request body** (JSON, max 256 bytes):
+
+  .. code-block:: json
+
+    {
+      "unit": "upstream-unit-uuid",
+      "port": "port-uuid"
+    }
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – body too large or invalid JSON
+  - ``404 Not Found`` – unit not found
+
+Unit Control
+^^^^^^^^^^^^^^^^^^^^
+
+POST /api/v1/io/units/{unitUuid}/control/{action}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Send a provider-specific control command to a unit.
+
+- **Path parameters:** ``unitUuid``, ``action`` (provider-defined string)
+- **Request body** – provider-specific payload, max 4 MiB
+- **Responses:**
+
+  - ``200 OK`` – provider-specific response
+  - ``400 Bad Request`` – body too large
+  - ``404 Not Found`` – unit not found
+  - ``501 Not Implemented`` – unit does not support control
+
+Ports
+~~~~~
+
+GET /api/v1/io/units/{unitUuid}/ports/{portUuid}/config
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Read a port's configuration.
+
+- **Response ``200 OK``** – JSON with ``"data"`` sub-keys
+- **Response ``404 Not Found``** – unit or port not found
+
+POST /api/v1/io/units/{unitUuid}/ports/{portUuid}/config
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Write a port's configuration.
+
+- **Request body** (JSON) – same structure as GET response
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – unit or port not found
+
+Signals
+~~~~~~~
+
+GET /api/v1/io/units/{unitUuid}/signals
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+List signal UUIDs for a unit.
+
+- **Response ``200 OK``** – JSON array of UUID strings
+
+GET /api/v1/io/units/{unitUuid}/signals/{signalUuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Retrieve a single signal's announcement data.
+
+- **Response ``200 OK``** – JSON:
+
+  .. code-block:: json
+
+    {
+      "uuid": "sig-uuid-1",
+      "type": "Temperature",
+      "identifier": "temp_1",
+      "address": "0",
+      "name": "Temperature Sensor 1",
+      "group": "Sensors",
+      "dataSeriesSet": "",
+      "readable": true,
+      "writable": false,
+      "enabled": true,
+      "dataType": 6,
+      "unit": "°C",
+      "decimals": 1,
+      "minValue": -40,
+      "maxValue": 125,
+      "color": "#00dbc9",
+      "visualization": "gauge"
+    }
+
+POST /api/v1/io/units/{unitUuid}/signals
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Add a single new signal to a unit.
+
+- **Response ``200 OK``** – body is the new signal's UUID
+- **Response ``404 Not Found``** – unit not found
+
+PUT /api/v1/io/units/{unitUuid}/signals
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Add multiple signals to a unit in one request.
+
+- **Request body** (JSON): array of signal property objects
+
+  .. code-block:: json
+
+    [
+      { "name": { "data": "Signal A" }, "address": { "data": "0" } },
+      { "name": { "data": "Signal B" }, "address": { "data": "1" } }
+    ]
+
+- **Response ``200 OK``** – JSON array of new signal UUIDs
+- **Response ``400 Bad Request``** – invalid JSON
+- **Response ``404 Not Found``** – unit not found
+
+DELETE /api/v1/io/units/{unitUuid}/signals
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Remove multiple signals from a unit.
+
+- **Query parameter:** ``uuids`` (string, required) – comma-separated signal
+  UUIDs
+
+  Example: ``?uuids=sig-1,sig-2,sig-3``
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – missing ``uuids`` parameter
+  - ``404 Not Found`` – unit not found
+  - ``500 Internal Server Error`` – removal failed
+
+POST /api/v1/io/units/{unitUuid}/signals/{signalUuid}/duplicate
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Duplicate an existing signal with a new name.
+
+- **Request body** (JSON):
+
+  .. code-block:: json
+
+    {
+      "name": "Temperature Sensor 1 (copy)"
+    }
+
+- **Responses:**
+
+  - ``200 OK`` – body is the new signal's UUID
+  - ``400 Bad Request`` – missing ``name`` field
+  - ``404 Not Found`` – unit or source signal not found
+  - ``500 Internal Server Error`` – duplication failed
+
+Signal Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Signal settings use the **configuration object** pattern with ``"data"``
+sub-keys. See :ref:`signal-processing-chains` for the full key reference.
+
+GET /api/v1/io/units/{unitUuid}/signals/{signalUuid}/config
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Read a signal's configuration.
+
+- **Response ``200 OK``** – JSON with ``"data"`` sub-keys (see
+  :ref:`signal-processing-chains`)
+
+PUT /api/v1/io/units/{unitUuid}/signals/{signalUuid}/config
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Write a signal's configuration.
+
+- **Request body** (JSON) – same structure as GET response
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – unit or signal not found
+
+PUT /api/v1/io/units/{unitUuid}/signals/config
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Write configuration for multiple signals in one request.
+
+- **Query parameter:** ``uuids`` (string, required) – comma-separated signal
+  UUIDs
+- **Request body** (JSON) – configuration object (applied to all listed
+  signals)
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – invalid JSON
+  - ``404 Not Found`` – unit or any signal not found
+
+PUT /api/v1/io/units/{unitUuid}/signals/clear
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Remove all signals from a unit.
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – unit not found
+  - ``500 Internal Server Error`` – clear failed
+
+PUT /api/v1/io/units/{unitUuid}/signals/reset
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Reset specific signals (e.g. zero counters).
+
+- **Request body** (JSON): array of signal UUIDs
+
+  .. code-block:: json
+
+    ["sig-uuid-1", "sig-uuid-2"]
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – invalid JSON
+  - ``404 Not Found`` – unit not found
+
+POST /api/v1/io/units/{unitUuid}/signals/{signalUuid}/control/{action}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Send a signal-specific control command.
+
+- **Path parameters:** ``unitUuid``, ``signalUuid``, ``action``
+- **Request body** – provider-specific payload, max 4 MiB
+- **Responses:**
+
+  - ``200 OK`` – provider-specific response
+  - ``400 Bad Request`` – missing action or body too large
+  - ``404 Not Found`` – unit or signal not found
+  - ``501 Not Implemented`` – signal does not support control
 
 I/O Connections
----------------
+^^^^^^^^^^^^^^^^^^^^
 
-Connections define signal-to-signal data flow with optional signal
-processing chains.
+I/O connections define signal processing chains that route a source signal's
+output to a destination signal's input. The collection is a **plain JSON array**
+(no ``"data"`` wrapper).
 
-.. list-table:: Connection endpoints
-   :header-rows: 1
+Connection Object Schema
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/io/connections``
-     - SysAdmin
-     - List all connections
-   * - ``GET``
-     - ``/api/v1/io/connections/<uuid>``
-     - SysAdmin
-     - Get a single connection
-   * - ``POST``
-     - ``/api/v1/io/connections``
-     - SysAdmin
-     - Create a connection
-   * - ``PUT``
-     - ``/api/v1/io/connections/<uuid>``
-     - SysAdmin
-     - Modify a connection
-   * - ``PUT``
-     - ``/api/v1/io/connections/disable/<uuid>``
-     - SysAdmin
-     - Enable/disable a connection
-   * - ``DELETE``
-     - ``/api/v1/io/connections/<uuid>``
-     - SysAdmin
-     - Delete a connection
+- ``uuid`` (string, required) – unique identifier
+- ``source`` (object, required):
 
-Connection Schema
+  - ``unit`` (string) – source unit UUID
+  - ``signal`` (string) – source signal UUID
+
+- ``destination`` (object, required):
+
+  - ``unit`` (string) – destination unit UUID
+  - ``signal`` (string) – destination signal UUID
+
+- ``signalProcessings`` (array, optional) – array of processing chain
+  configuration objects (see :ref:`signal-processing-chains`)
+- ``disabled`` (boolean, optional) – whether the connection is disabled
+
+Endpoints:
+
+- ``GET /api/v1/io/connections`` – list all connections
+- ``GET /api/v1/io/connections/{uuid}`` – get one connection
+- ``POST /api/v1/io/connections`` – create a connection
+- ``PUT /api/v1/io/connections/{uuid}`` – modify a connection
+- ``DELETE /api/v1/io/connections/{uuid}`` – delete a connection
+- ``PUT /api/v1/io/connections/disable/{uuid}`` – enable/disable a connection
+
+All require **SystemAdministrator** authentication.
+
+Default Signal Processing Chain Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+GET /api/v1/io/signal-processing/config/default
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Read the default (template) signal processing chain configuration. This is a
+**read-only** configuration object.
+
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – JSON with ``"data"`` sub-keys (see
+  :ref:`signal-processing-chains`)
+
+
+Signal Processing Chains
+------------------------
+
+.. _signal-processing-chains:
+
+Every I/O signal has an embedded **signal processing chain** that transforms
+the raw measurement value through a sequence of optional stages before
+producing the final output. The chain is configured via the signal's
+configuration object and uses the ``"data"`` sub-key pattern.
+
+Chain Stage Order
 ~~~~~~~~~~~~~~~~~
 
-.. list-table:: Fields
-   :header-rows: 1
+The processing stages are applied in the following fixed order:
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``uuid``
-     - string
-     - Auto
-     - Unique identifier
-   * - ``source.unit``
-     - string
-     - Yes
-     - UUID of source I/O unit
-   * - ``source.signal``
-     - string
-     - Yes
-     - UUID of source signal
-   * - ``destination.unit``
-     - string
-     - Yes
-     - UUID of destination I/O unit
-   * - ``destination.signal``
-     - string
-     - Yes
-     - UUID of destination signal
-   * - ``disabled``
-     - bool
-     - No
-     - Whether the connection is disabled (default: false)
-   * - ``signalProcessings``
-     - object
-     - No
-     - Signal processing chain configuration
+1. Pre-processing (mathematical expression)
+2. Linear scaling
+3. Delta
+4. Limit
+5. Threshold comparison
+6. Comparator
+7. Edge detection
+8. Time derivative
+9. Aggregation
+10. Post-processing (mathematical expression)
+
+Configuration Keys Reference
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All keys below appear in the signal's configuration JSON. Each value is wrapped
+in ``{ "data": <value> }``.
+
+Pre-processing
+^^^^^^^^^^^^^^^^
+
+- ``preProcessingEnabled`` (boolean) – enable/disable the stage
+- ``preProcessingExpression`` (string) – mathematical expression using
+  variable ``x`` for the input value. Example: ``"1.25 + (x / 2)"``
+
+Linear Scaling
+^^^^^^^^^^^^^^^^
+
+- ``linearScalingEnabled`` (boolean)
+- ``linearScalingX1`` (float) – minimum input value
+- ``linearScalingY1`` (float) – corresponding minimum output value
+- ``linearScalingX2`` (float) – maximum input value
+- ``linearScalingY2`` (float) – corresponding maximum output value
+
+Delta
+^^^^^
+
+- ``deltaEnabled`` (boolean)
+- ``deltaMode`` (unsigned integer):
+
+  - ``0`` – absolute difference to previous value
+  - ``1`` – relative change from previous value
+  - ``2`` – relative change in percent
+  - ``3`` – sign difference from previous value
+
+Limit
+^^^^^
+
+- ``limitEnabled`` (boolean)
+- ``limitDownwards`` (boolean) – apply lower limit
+- ``limitMinimumValue`` (float) – lower bound
+- ``limitUpwards`` (boolean) – apply upper limit
+- ``limitMaximumValue`` (float) – upper bound
+
+Threshold Comparison
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+- ``thresholdComparisonEnabled`` (boolean)
+- ``thresholdComparisonMode`` (unsigned integer):
+
+  - ``0`` – signal is above threshold
+  - ``1`` – signal is above or equal
+  - ``2`` – signal is below threshold
+  - ``3`` – signal is below or equal
+
+- ``thresholdComparisonValue`` (unsigned integer) – threshold value
+
+Comparator
+^^^^^^^^^^
+
+- ``comparatorEnabled`` (boolean)
+- ``comparatorLowerThreshold`` (float)
+- ``comparatorUpperThreshold`` (float)
+- ``comparatorOutputValueOff`` (float) – output when below lower threshold
+- ``comparatorOutputValueOn`` (float) – output when above upper threshold
+- ``comparatorTimerIntervalOff`` (unsigned integer, ms) – required duration
+  below lower threshold
+- ``comparatorTimerIntervalOn`` (unsigned integer, ms) – required duration
+  above upper threshold
+
+Edge Detection
+^^^^^^^^^^^^^^^^
+
+- ``edgeDetectionEnabled`` (boolean)
+- ``edgeDetectionCountRising`` (boolean) – count rising edges
+- ``edgeDetectionCountFalling`` (boolean) – count falling edges
+
+Time Derivative
+^^^^^^^^^^^^^^^^^
+
+- ``timeDerivativeEnabled`` (boolean)
+- ``timeDerivativeTimeBase`` (unsigned integer):
+
+  - ``0`` – per second (Δx/s)
+  - ``1`` – per minute (Δx/min)
+  - ``2`` – per hour (Δx/h)
+  - ``3`` – per day (Δx/d)
+
+Aggregation
+^^^^^^^^^^^^^
+
+- ``aggregationEnabled`` (boolean)
+- ``aggregationType`` (unsigned integer):
+
+  - ``0`` – minimum value
+  - ``1`` – maximum value
+  - ``2`` – average value
+  - ``3`` – oldest value
+  - ``4`` – sum of all values
+  - ``5`` – median
+
+- ``aggregationInterval`` (unsigned integer, seconds) – window size
+- ``aggregationUpdateMode`` (unsigned integer):
+
+  - ``0`` – continuously (update on every sample)
+  - ``1`` – periodically (update at end of interval)
+
+Post-processing
+^^^^^^^^^^^^^^^^^
+
+- ``postProcessingEnabled`` (boolean)
+- ``postProcessingExpression`` (string) – mathematical expression using
+  variable ``x``. Example: ``"x * 1.05"``
+
+Signal Metadata Keys
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+In addition to the processing chain keys, the signal configuration includes:
+
+- ``name`` (string) – display name
+- ``uuid`` (string, read-only) – signal UUID
+- ``enabled`` (boolean) – enable/disable the signal
+- ``vmetricsPushEnabled`` (boolean) – record values to VictoriaMetrics
+- ``vmetricsPushInterval`` (unsigned integer, seconds) – recording interval
+- ``useCustomIdentifier`` (boolean)
+- ``customIdentifier`` (string) – custom identifier (overrides auto-generated)
+- ``group`` (string) – grouping label
+- ``dataSeriesSet`` (string) – data series set label
+- ``siPrefix`` (unsigned integer) – SI prefix (0 = none, 3 = k, 9 = µ, etc.)
+- ``measurementUnit`` (string) – unit string (e.g. ``"DegreeCelsius"``)
+- ``decimals`` (unsigned integer) – number of decimal places (0–5)
+- ``customDataType`` (unsigned integer) – override data type (0 = keep
+  original)
+- ``visualizationType`` (string) – ``"none"``, ``"gauge"``, ``"led"``,
+  ``"counter"``
+- ``color`` (string) – hex colour or named colour
+- ``minimumValue`` (double) – display minimum
+- ``maximumValue`` (double) – display maximum
+
+Example – Full Signal Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: json
-   :caption: Example connection
 
-   {
-       "source": {"unit": "unit-aaa", "signal": "sig-111"},
-       "destination": {"unit": "unit-bbb", "signal": "sig-222"},
-       "disabled": false,
-       "signalProcessings": {
-           "preProcessingEnabled": true,
-           "preProcessingExpression": "x * 2",
-           "linearScalingEnabled": true,
-           "linearScalingX1": 0,
-           "linearScalingX2": 100,
-           "linearScalingY1": 20,
-           "linearScalingY2": 80
-       }
-   }
-
-
-Signal Processing Chain
------------------------
-
-The default signal processing chain configuration is exposed at:
-
-.. list-table::
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/io/signal-processing/config/default``
-     - SysAdmin
-     - Read default processing chain template (read-only)
-
-.. list-table:: Processing stages (in order)
-   :header-rows: 1
-
-   * - Stage
-     - Config prefix
-     - Description
-   * - Pre-processing
-     - ``preProcessing*``
-     - Mathematical expression applied to raw input
-   * - Linear scaling
-     - ``linearScaling*``
-     - Map input range [X1, X2] to output range [Y1, Y2]
-   * - Delta
-     - ``delta*``
-     - Compute difference/ratio to previous value
-   * - Limit
-     - ``limit*``
-     - Clamp value to [min, max]
-   * - Threshold comparison
-     - ``thresholdComparison*``
-     - Convert to boolean based on comparison
-   * - Comparator
-     - ``comparator*``
-     - Two-threshold comparator with debounce
-   * - Edge detection
-     - ``edgeDetection*``
-     - Count rising/falling edges
-   * - Time derivative
-     - ``timeDerivative*``
-     - Compute rate of change (Δx/s, Δx/min, Δx/h, Δx/d)
-   * - Aggregation
-     - ``aggregation*``
-     - Rolling window: min, max, avg, oldest, sum, median
-   * - Post-processing
-     - ``postProcessing*``
-     - Mathematical expression applied to final output
+  {
+    "name": { "data": "Motor Temperature" },
+    "uuid": { "data": "a1b2c3d4e5f6" },
+    "enabled": { "data": true },
+    "vmetricsPushEnabled": { "data": true },
+    "vmetricsPushInterval": { "data": 60 },
+    "useCustomIdentifier": { "data": false },
+    "customIdentifier": { "data": "" },
+    "group": { "data": "Motor" },
+    "dataSeriesSet": { "data": "" },
+    "siPrefix": { "data": 0 },
+    "measurementUnit": { "data": "DegreeCelsius" },
+    "decimals": { "data": 1 },
+    "customDataType": { "data": 0 },
+    "visualizationType": { "data": "gauge" },
+    "color": { "data": "#00dbc9" },
+    "minimumValue": { "data": -40 },
+    "maximumValue": { "data": 150 },
+    "preProcessingEnabled": { "data": false },
+    "preProcessingExpression": { "data": "x" },
+    "linearScalingEnabled": { "data": true },
+    "linearScalingX1": { "data": 0 },
+    "linearScalingY1": { "data": -40 },
+    "linearScalingX2": { "data": 255 },
+    "linearScalingY2": { "data": 150 },
+    "deltaEnabled": { "data": false },
+    "deltaMode": { "data": 0 },
+    "limitEnabled": { "data": true },
+    "limitDownwards": { "data": true },
+    "limitMinimumValue": { "data": -40 },
+    "limitUpwards": { "data": true },
+    "limitMaximumValue": { "data": 150 },
+    "thresholdComparisonEnabled": { "data": false },
+    "thresholdComparisonMode": { "data": 0 },
+    "thresholdComparisonValue": { "data": 0 },
+    "comparatorEnabled": { "data": false },
+    "comparatorLowerThreshold": { "data": 0 },
+    "comparatorUpperThreshold": { "data": 0 },
+    "comparatorOutputValueOff": { "data": 0 },
+    "comparatorOutputValueOn": { "data": 1 },
+    "comparatorTimerIntervalOff": { "data": 0 },
+    "comparatorTimerIntervalOn": { "data": 0 },
+    "edgeDetectionEnabled": { "data": false },
+    "edgeDetectionCountRising": { "data": false },
+    "edgeDetectionCountFalling": { "data": false },
+    "timeDerivativeEnabled": { "data": false },
+    "timeDerivativeTimeBase": { "data": 0 },
+    "aggregationEnabled": { "data": false },
+    "aggregationType": { "data": 2 },
+    "aggregationInterval": { "data": 60 },
+    "aggregationUpdateMode": { "data": 0 },
+    "postProcessingEnabled": { "data": false },
+    "postProcessingExpression": { "data": "x" }
+  }
 
 
 Synthetic Signals
 -----------------
 
-Virtual signals computed from other signals using arithmetic operations
-or mathematical expressions.
+.. _synthetic-signals:
 
-.. list-table:: Synthetic signal endpoints
-   :header-rows: 1
+Synthetic signals are virtual I/O signals computed from other signals using
+arithmetic or logical expressions. The collection is a **plain JSON array**.
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/io/synthetic/signals``
-     - SysAdmin
-     - List all synthetic signals
-   * - ``GET``
-     - ``/api/v1/io/synthetic/signals/<uuid>``
-     - SysAdmin
-     - Get a single synthetic signal
-   * - ``POST``
-     - ``/api/v1/io/synthetic/signals``
-     - SysAdmin
-     - Create a synthetic signal
-   * - ``PUT``
-     - ``/api/v1/io/synthetic/signals/<uuid>``
-     - SysAdmin
-     - Modify a synthetic signal
-   * - ``DELETE``
-     - ``/api/v1/io/synthetic/signals/<uuid>``
-     - SysAdmin
-     - Delete a synthetic signal
-   * - ``PUT``
-     - ``/api/v1/io/synthetic/signals/disable/<uuid>``
-     - SysAdmin
-     - Enable/disable a synthetic signal
-   * - ``PUT``
-     - ``/api/v1/io/synthetic/signals``
-     - SysAdmin
-     - Replace all synthetic signals
-   * - ``POST``
-     - ``/api/v1/io/synthetic/signals/<srcUuid>/clone/<dstUuid>``
-     - SysAdmin
-     - Clone settings from one signal to another
-   * - ``POST``
-     - ``/api/v1/io/synthetic/signals/<uuid>/name/propagate``
-     - SysAdmin
-     - Propagate name to I/O signal
-   * - ``POST``
-     - ``/api/v1/io/synthetic/signals/<uuid>/name/update``
-     - SysAdmin
-     - Update name from I/O signal
+Synthetic Signal Object Schema
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Synthetic Signal Schema
-~~~~~~~~~~~~~~~~~~~~~~~
+- ``uuid`` (string, required) – unique identifier
+- ``name`` (string, required) – display name
+- ``enabled`` (boolean, optional) – defaults to ``true``
+- ``source1`` (object, required):
 
-.. list-table:: Fields
-   :header-rows: 1
+  - ``unit`` (string) – source unit UUID
+  - ``signal`` (string) – source signal UUID
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``uuid``
-     - string
-     - Auto
-     - Unique identifier
-   * - ``name``
-     - string
-     - Yes
-     - Display name
-   * - ``enabled``
-     - bool
-     - No
-     - Signal enabled (default: true)
-   * - ``source1.unit``
-     - string
-     - Yes
-     - UUID of source unit 1
-   * - ``source1.signal``
-     - string
-     - Yes
-     - UUID of source signal 1
-   * - ``source2.unit``
-     - string
-     - Yes
-     - UUID of source unit 2
-   * - ``source2.signal``
-     - string
-     - Yes
-     - UUID of source signal 2
-   * - ``calculation``
-     - string
-     - Yes
-     - Operation: ``+``, ``-``, ``*``, ``/``, ``&&``, ``||``, ``..``, ``+.``, ``++``, or a math expression
+- ``source2`` (object, required):
 
-Calculation operators:
+  - ``unit`` (string) – second source unit UUID
+  - ``signal`` (string) – second source signal UUID
 
-.. list-table::
-   :header-rows: 1
+- ``calculation`` (string, required) – the calculation expression. Supported
+  values:
 
-   * - Value
-     - Description
-   * - ``+``
-     - A + B
-   * - ``-``
-     - A - B
-   * - ``*``
-     - A × B
-   * - ``/``
-     - A ÷ B
-   * - ``&&``
-     - Logical AND (A && B)
-   * - ``||``
-     - Logical OR (A || B)
-   * - ``..``
-     - Latch: A sets to 1, B resets to 0
-   * - ``+.``
-     - Counter with reset: counts A, resets when B is true
-   * - ``++``
-     - Counter without reset: counts A
-   * - *(expression)*
-     - Math expression using variables A, B, P (previous value)
+  - ``"+"``, ``"-"``, ``"*"``, ``"/"`` – arithmetic on A and B
+  - ``"&&"``, ``"||"`` – logical AND / OR
+  - ``".."`` – latch (A sets to 1, B resets to 0)
+  - ``"+."`` – counter with reset (A = count, B = reset trigger)
+  - ``"++"`` – counter without reset (A = count)
+  - Any other string – evaluated as a mathematical expression with variables
+    ``A``, ``B``, ``P`` (previous value) and access to ``Math.*`` functions
 
-.. code-block:: json
-   :caption: Example synthetic signal
+Endpoints
+~~~~~~~~~
 
-   {
-       "name": "Total Power",
-       "enabled": true,
-       "source1": {"unit": "unit-aaa", "signal": "sig-voltage"},
-       "source2": {"unit": "unit-aaa", "signal": "sig-current"},
-       "calculation": "*"
-   }
+GET /api/v1/io/synthetic/signals
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+List all synthetic signals.
+
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – JSON array
+
+GET /api/v1/io/synthetic/signals/{uuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Get a single synthetic signal.
+
+- **Response ``200 OK``** – single object
+- **Response ``404 Not Found``** – not found
+
+POST /api/v1/io/synthetic/signals
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Create a synthetic signal.
+
+- **Request body** (JSON):
+
+  .. code-block:: json
+
+    {
+      "name": "Flow Difference",
+      "source1": { "unit": "unit-uuid-1", "signal": "sig-uuid-1" },
+      "source2": { "unit": "unit-uuid-2", "signal": "sig-uuid-2" },
+      "calculation": "-"
+    }
+
+- **Responses:**
+
+  - ``200 OK`` – body is the new UUID
+  - ``400 Bad Request`` – invalid body
+
+PUT /api/v1/io/synthetic/signals/{uuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Modify a synthetic signal.
+
+- **Request body** (JSON) – same schema as create
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – not found
+
+PUT /api/v1/io/synthetic/signals
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Replace all synthetic signals at once.
+
+- **Request body** (JSON) – array of synthetic signal objects
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – invalid body
+
+DELETE /api/v1/io/synthetic/signals/{uuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Delete a synthetic signal.
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – not found
+
+PUT /api/v1/io/synthetic/signals/disable/{uuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Enable/disable a synthetic signal.
+
+- **Request body:** ``{ "disabled": true }``
+
+POST /api/v1/io/synthetic/signals/{sourceUuid}/clone/{destUuid}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Clone the calculation settings from one synthetic signal to another.
+
+- **Path parameters:** ``sourceUuid``, ``destUuid``
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – either signal not found
+
+POST /api/v1/io/synthetic/signals/{uuid}/name/propagate
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Propagate the name from the registry entry to the live I/O signal.
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – signal not found
+
+POST /api/v1/io/synthetic/signals/{uuid}/name/update
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Update the registry name to match the live I/O signal name.
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – signal not found
+  - ``500 Internal Server Error`` – registry update failed
 
 
 Modbus Server Endpoint
 ----------------------
 
-.. list-table:: Endpoints
-   :header-rows: 1
+.. _modbus-server:
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/io/endpoints/modbus/tcp``
-     - SysAdmin
-     - Read Modbus TCP settings
-   * - ``POST``
-     - ``/api/v1/io/endpoints/modbus/tcp``
-     - SysAdmin
-     - Write Modbus TCP settings
-   * - ``GET``
-     - ``/api/v1/io/endpoints/modbus/rtu``
-     - SysAdmin
-     - Read Modbus RTU settings
-   * - ``POST``
-     - ``/api/v1/io/endpoints/modbus/rtu``
-     - SysAdmin
-     - Write Modbus RTU settings
-   * - ``GET``
-     - ``/api/v1/io/endpoints/modbus/registers``
-     - SysAdmin
-     - List Modbus registers
-   * - ``POST``
-     - ``/api/v1/io/endpoints/modbus/registers``
-     - SysAdmin
-     - Add a register
-   * - ``PUT``
-     - ``/api/v1/io/endpoints/modbus/registers/<uuid>``
-     - SysAdmin
-     - Modify a register
-   * - ``DELETE``
-     - ``/api/v1/io/endpoints/modbus/registers/<uuid>``
-     - SysAdmin
-     - Remove a register
+The built-in Modbus server exposes TCP and RTU interfaces with configurable
+registers.
 
-Modbus TCP Settings
-~~~~~~~~~~~~~~~~~~~
+Endpoints
+~~~~~~~~~
 
-.. list-table:: Fields
-   :header-rows: 1
+GET/POST /api/v1/io/endpoints/modbus/tcp
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   * - Field
-     - Type
-     - Default
-     - Description
-   * - ``enabled``
-     - bool
-     - false
-     - Enable Modbus TCP server
-   * - ``networkAddress``
-     - string
-     - "0.0.0.0"
-     - Listen address
-   * - ``networkPort``
-     - int
-     - 502
-     - Listen port (1–65535)
+Read/write Modbus TCP server settings.
 
-Modbus RTU Settings
-~~~~~~~~~~~~~~~~~~~
+- **Authentication:** SystemAdministrator
+- **Configuration keys** (``"data"`` sub-key pattern):
 
-.. list-table:: Fields
-   :header-rows: 1
+  - ``enabled`` (boolean) – enable/disable the TCP server
+  - ``networkAddress`` (string) – listen address (default ``"0.0.0.0"``)
+  - ``networkPort`` (unsigned integer) – listen port (default ``502``)
 
-   * - Field
-     - Type
-     - Default
-     - Description
-   * - ``enabled``
-     - bool
-     - false
-     - Enable Modbus RTU slave
-   * - ``rtuBusInterface``
-     - int
-     - 0
-     - 0: serial port, 1: RS485, 2: backplane bus
-   * - ``rtuSerialPortName``
-     - string
-     - "ttyUSB0"
-     - Serial port device name
-   * - ``rtuBaudRate``
-     - int
-     - 115200
-     - Baud rate
-   * - ``rtuDataBits``
-     - int
-     - 8
-     - Data bits (5–8)
-   * - ``rtuParity``
-     - int
-     - 0
-     - 0: none, 2: even, 3: odd, 4: space, 5: mark
-   * - ``rtuStopBits``
-     - int
-     - 1
-     - Stop bits (1, 2, 3=1.5)
-   * - ``modbusId``
-     - int
-     - 1
-     - Modbus slave ID (1–254)
+GET/POST /api/v1/io/endpoints/modbus/rtu
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Register Schema
-~~~~~~~~~~~~~~~
+Read/write Modbus RTU slave settings.
 
-.. list-table:: Fields
-   :header-rows: 1
+- **Authentication:** SystemAdministrator
+- **Configuration keys:**
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``type``
-     - int
-     - Yes
-     - Modbus register type (coil, discrete, input reg, holding reg)
-   * - ``address``
-     - int
-     - Yes
-     - Register address
-   * - ``dataType``
-     - int
-     - No
-     - Data type (unsigned/signed int, float, double, etc.)
-   * - ``ioMode``
-     - int
-     - No
-     - 0: signal→register, 1: register→signal
-   * - ``signal.unit``
-     - string
-     - No
-     - Target I/O unit UUID (when linked to signal)
-   * - ``signal.signal``
-     - string
-     - No
-     - Target signal UUID (when linked to signal)
+  - ``enabled`` (boolean)
+  - ``rtuBusInterface`` (unsigned integer):
+
+    - ``0`` – serial port
+    - ``1`` – builtin RS485 interface
+    - ``2`` – backplane bus
+
+  - ``rtuSerialPortName`` (string) – e.g. ``"ttyUSB0"``
+  - ``rtuBaudRate`` (unsigned integer) – e.g. ``115200``
+  - ``rtuDataBits`` (unsigned integer) – 5, 6, 7, or 8
+  - ``rtuParity`` (unsigned integer):
+
+    - ``0`` – no parity
+    - ``2`` – even
+    - ``3`` – odd
+    - ``4`` – space
+    - ``5`` – mark
+
+  - ``rtuStopBits`` (unsigned integer):
+
+    - ``1`` – 1 stop bit
+    - ``2`` – 2 stop bits
+    - ``3`` – 1.5 stop bits
+
+  - ``modbusId`` (unsigned integer) – Modbus slave address (1–254)
+
+GET/POST/PUT/DELETE /api/v1/io/endpoints/modbus/registers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Manage Modbus register mappings. The collection is a **plain JSON array**.
+
+Register Object Schema
+~~~~~~~~~~~~~~~~~~~~~~
+
+- ``uuid`` (string, required) – unique identifier
+- ``type`` (integer) – Modbus register type
+- ``address`` (integer) – register address
+- ``dataType`` (integer, optional) – data type:
+
+  - ``0`` – unsigned small integer (1 register)
+  - ``1`` – signed small integer (1 register)
+  - ``2`` – unsigned integer (2 registers)
+  - ``3`` – signed integer (2 registers)
+  - ``4`` – float (2 registers)
+  - ``5`` – unsigned big integer (4 registers)
+  - ``6`` – signed big integer (4 registers)
+  - ``7`` – double (4 registers)
+
+- ``ioMode`` (integer) – ``0`` = read from signal, ``1`` = write to signal
+- ``signal`` (object):
+
+  - ``unit`` (string) – target unit UUID
+  - ``signal`` (string) – target signal UUID
+
+Example register:
+
+.. code-block:: json
+
+  {
+    "uuid": "reg-uuid-1",
+    "type": 3,
+    "address": 0,
+    "dataType": 4,
+    "ioMode": 0,
+    "signal": { "unit": "unit-uuid-1", "signal": "sig-uuid-1" }
+  }
 
 
 Firewall
 --------
 
-.. list-table:: Endpoints
-   :header-rows: 1
+.. _firewall:
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/firewall/rules/incoming``
-     - SysAdmin
-     - List incoming rules
-   * - ``POST``
-     - ``/api/v1/firewall/rules/incoming``
-     - SysAdmin
-     - Add incoming rule
-   * - ``PUT``
-     - ``/api/v1/firewall/rules/incoming/<uuid>``
-     - SysAdmin
-     - Modify incoming rule
-   * - ``PUT``
-     - ``/api/v1/firewall/rules/incoming/<uuid>/up``
-     - SysAdmin
-     - Move rule up
-   * - ``PUT``
-     - ``/api/v1/firewall/rules/incoming/<uuid>/down``
-     - SysAdmin
-     - Move rule down
-   * - ``DELETE``
-     - ``/api/v1/firewall/rules/incoming/<uuid>``
-     - SysAdmin
-     - Delete rule
-   * - *(same pattern for)*
-     - ``/api/v1/firewall/rules/outgoing``
-     - SysAdmin
-     - Outgoing rules
-   * - *(same pattern for)*
-     - ``/api/v1/firewall/rules/ipforwarding``
-     - SysAdmin
-     - IP forwarding rules
-   * - *(same pattern for)*
-     - ``/api/v1/firewall/rules/portforwarding``
-     - SysAdmin
-     - Port forwarding rules
-   * - ``GET``
-     - ``/api/v1/firewall/internet/sharing``
-     - SysAdmin
-     - Get internet sharing settings
-   * - ``POST``
-     - ``/api/v1/firewall/internet/sharing``
-     - SysAdmin
-     - Set internet sharing settings
+Firewall rules are managed as four separate collections (all **plain JSON
+arrays** with move-up/move-down support) plus internet connection sharing
+settings.
 
-Firewall Rule Schema
-~~~~~~~~~~~~~~~~~~~~
+Rule Object Schema (common fields)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. list-table:: Common rule fields
-   :header-rows: 1
+- ``uuid`` (string, required)
+- ``enabled`` (boolean, optional, default ``true``)
+- ``networkProtocol`` (string) – protocol identifier
+- ``inputInterface`` / ``outputInterface`` (string) – interface name
+- ``sourceAddress`` / ``destinationAddress`` (string) – IP or CIDR
+- ``destinationPorts`` (string) – space-separated port list
+- ``action`` (string) – rule action (accept/drop)
 
-   * - Field
-     - Type
-     - Description
-   * - ``networkProtocol``
-     - int
-     - IP protocol number (6=TCP, 17=UDP, 0=any)
-   * - ``inputInterface`` / ``outputInterface``
-     - string
-     - Interface name (e.g., "eth0", "wlan0", "wwan0")
-   * - ``sourceAddress``
-     - string
-     - Source IP/CIDR (e.g., "192.168.1.0/24")
-   * - ``destinationAddress``
-     - string
-     - Destination IP/CIDR
-   * - ``destinationPorts``
-     - string
-     - Space-separated port list (e.g., "80 443 8080")
-   * - ``action``
-     - int
-     - 0: accept, 1: drop (nftables statement type)
-   * - ``enabled``
-     - bool
-     - Whether the rule is active
+Endpoints
+~~~~~~~~~
 
-.. code-block:: json
-   :caption: Example incoming rule
+Incoming Rules
+^^^^^^^^^^^^^^^^
 
-   {
-       "networkProtocol": 6,
-       "inputInterface": "eth0",
-       "sourceAddress": "192.168.1.0/24",
-       "destinationPorts": "443 8080",
-       "action": 0,
-       "enabled": true
-   }
+- ``GET /api/v1/firewall/rules/incoming`` – list
+- ``GET /api/v1/firewall/rules/incoming/{uuid}`` – get one
+- ``POST /api/v1/firewall/rules/incoming`` – create
+- ``PUT /api/v1/firewall/rules/incoming/{uuid}`` – modify
+- ``DELETE /api/v1/firewall/rules/incoming/{uuid}`` – delete
+- ``PUT /api/v1/firewall/rules/incoming/{uuid}/up`` – move up
+- ``PUT /api/v1/firewall/rules/incoming/{uuid}/down`` – move down
 
-Internet Sharing
-~~~~~~~~~~~~~~~~
+Outgoing Rules
+^^^^^^^^^^^^^^^^
 
-.. code-block:: json
-   :caption: GET /api/v1/firewall/internet/sharing – Response
+- ``GET /api/v1/firewall/rules/outgoing`` – list
+- ``GET /api/v1/firewall/rules/outgoing/{uuid}`` – get one
+- ``POST /api/v1/firewall/rules/outgoing`` – create
+- ``PUT /api/v1/firewall/rules/outgoing/{uuid}`` – modify
+- ``DELETE /api/v1/firewall/rules/outgoing/{uuid}`` – delete
+- ``PUT /api/v1/firewall/rules/outgoing/{uuid}/up`` – move up
+- ``PUT /api/v1/firewall/rules/outgoing/{uuid}/down`` – move down
 
-   {
-       "enabled": true,
-       "inputInterfaces": ["eth0", "eth1"],
-       "outputInterface": "wwan0"
-   }
+IP Forwarding Rules
+^^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: json
-   :caption: POST /api/v1/firewall/internet/sharing – Request
+- ``GET /api/v1/firewall/rules/ipforwarding`` – list
+- ``GET /api/v1/firewall/rules/ipforwarding/{uuid}`` – get one
+- ``POST /api/v1/firewall/rules/ipforwarding`` – create
+- ``PUT /api/v1/firewall/rules/ipforwarding/{uuid}`` – modify
+- ``DELETE /api/v1/firewall/rules/ipforwarding/{uuid}`` – delete
+- ``PUT /api/v1/firewall/rules/ipforwarding/{uuid}/up`` – move up
+- ``PUT /api/v1/firewall/rules/ipforwarding/{uuid}/down`` – move down
 
-   {
-       "enabled": true,
-       "inputInterfaces": ["eth0"],
-       "outputInterface": "wlan0"
-   }
+Additional fields for IP forwarding rules:
 
-Known network interfaces: ``eth0``, ``eth1``, ``wlan0``, ``wwan0``,
-``tun0``, ``docker0``.
+- ``inputInterface`` (string)
+- ``outputInterface`` (string)
+- ``sourceAddress`` (string)
+- ``destinationAddress`` (string)
 
+Port Forwarding Rules
+^^^^^^^^^^^^^^^^^^^^^^^
 
-Licensing
----------
+- ``GET /api/v1/firewall/rules/portforwarding`` – list
+- ``GET /api/v1/firewall/rules/portforwarding/{uuid}`` – get one
+- ``POST /api/v1/firewall/rules/portforwarding`` – create
+- ``PUT /api/v1/firewall/rules/portforwarding/{uuid}`` – modify
+- ``DELETE /api/v1/firewall/rules/portforwarding/{uuid}`` – delete
+- ``PUT /api/v1/firewall/rules/portforwarding/{uuid}/up`` – move up
+- ``PUT /api/v1/firewall/rules/portforwarding/{uuid}/down`` – move down
 
-.. list-table:: Endpoints
-   :header-rows: 1
+Additional fields for port forwarding rules:
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/licensing/licenses``
-     - None
-     - List all installed licenses
-   * - ``POST``
-     - ``/api/v1/licensing/licenses``
-     - SysAdmin
-     - Import a license file
-   * - ``DELETE``
-     - ``/api/v1/licensing/licenses/<licenseId>``
-     - SysAdmin
-     - Remove a license
+- ``localPort`` (string) – local port to forward to
+- ``destinationPort`` (string) – destination port
+- ``destinationAddress`` (string) – target IP
+- ``masquerade`` (boolean, optional) – enable masquerade
 
-List Licenses
-~~~~~~~~~~~~~
+Internet Connection Sharing
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Response
-^^^^^^^^
+GET /api/v1/firewall/internet/sharing
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**200 OK**
+Read internet connection sharing settings.
 
-.. code-block:: json
+- **Authentication:** SystemAdministrator
+- **Response ``200 OK``** – JSON:
 
-   [
-       {
-           "id": "lic-abc123",
-           "productId": "de.inhub.siineos",
-           "productName": "SIINEOS Standard",
-           "productVersion": "3.2",
-           "productSize": "Standard",
-           "valid": true,
-           "validFrom": "2024-01-01T00:00:00.000Z",
-           "validUntil": "2025-12-31T23:59:59.000Z",
-           "licensee": "ACME Corp"
-       }
-   ]
+  .. code-block:: json
 
-Import License
-~~~~~~~~~~~~~~
+    {
+      "enabled": true,
+      "inputInterfaces": ["eth0", "wlan0"],
+      "outputInterface": "wwan0"
+    }
 
-Request: raw license file content (max 100 KB).
+POST /api/v1/firewall/internet/sharing
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Response
-^^^^^^^^
+Write internet connection sharing settings.
 
-**200 OK**
+- **Authentication:** SystemAdministrator
+- **Request body** (JSON, max 100000 bytes):
 
-.. code-block:: json
+  .. code-block:: json
 
-   {
-       "id": "lic-abc123",
-       "productId": "de.inhub.siineos",
-       "productName": "SIINEOS Standard",
-       "productVersion": "3.2",
-       "productSize": "Standard",
-       "valid": true,
-       "validFrom": "2024-01-01T00:00:00.000Z",
-       "validUntil": "2025-12-31T23:59:59.000Z",
-       "licensee": "ACME Corp"
-   }
+    {
+      "enabled": true,
+      "inputInterfaces": ["eth0", "wlan0"],
+      "outputInterface": "wwan0"
+    }
 
-**400 Bad Request** – body too large
+  - ``enabled`` (boolean, required)
+  - ``inputInterfaces`` (array of strings, required) – interfaces to share
+    from
+  - ``outputInterface`` (string, required) – interface to share through.
+    Must be one of: ``eth0``, ``eth1``, ``wlan0``, ``wwan0``, ``tun0``,
+    ``docker0``
 
-**409 Conflict** – license with same ID already installed
+- **Responses:**
 
-**406 Not Acceptable** – license is invalid (expired or bad signature)
-
-**422 Unprocessable Entity** – failed to parse license file
-
-Remove License
-~~~~~~~~~~~~~~
-
-**200 OK** – license removed
-
-**404 Not Found** – license ID not found
-
-
-Apps
-----
-
-.. list-table::
-   :header-rows: 1
-
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``PUT``
-     - ``/api/v1/apps/<appId>/control/<property>``
-     - SysAdmin
-     - Set an app control property
-
-Path Parameters
-~~~~~~~~~~~~~~~
-
-.. list-table::
-   :header-rows: 1
-
-   * - Parameter
-     - Values
-     - Description
-   * - ``appId``
-     - string
-     - Application identifier
-   * - ``property``
-     - ``enabled``, ``debug``, ``trace``
-     - The control property to set
-
-Request
-^^^^^^^
-
-Body: JSON boolean (max 10 bytes).
-
-.. code-block:: json
-
-   true
-
-Response
-^^^^^^^^
-
-**200 OK** – property set
-
-**400 Bad Request** – body too large or invalid JSON
-
-**404 Not Found** – unknown control property
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – invalid body or unknown interface
 
 
 Alerting
 --------
 
-.. list-table:: Endpoints
-   :header-rows: 1
+.. _alerting:
 
-   * - Method
-     - Path
-     - Auth
-     - Description
-   * - ``GET``
-     - ``/api/v1/alerting/signals``
-     - SysAdmin
-     - List alert signals
-   * - ``POST``
-     - ``/api/v1/alerting/signals``
-     - SysAdmin
-     - Create an alert signal
-   * - ``PUT``
-     - ``/api/v1/alerting/signals/<uuid>``
-     - SysAdmin
-     - Modify an alert signal
-   * - ``PUT``
-     - ``/api/v1/alerting/signals/disable/<uuid>``
-     - SysAdmin
-     - Enable/disable an alert signal
-   * - ``DELETE``
-     - ``/api/v1/alerting/signals/<uuid>``
-     - SysAdmin
-     - Delete an alert signal
-   * - *(same pattern for)*
-     - ``/api/v1/alerting/destinations``
-     - SysAdmin
-     - Alert destinations CRUD
-   * - *(same pattern for)*
-     - ``/api/v1/alerting/rules``
-     - SysAdmin
-     - Alert rules CRUD
+The alerting subsystem comprises three collections: **signals** (conditions to
+monitor), **destinations** (notification targets), and **rules** (bindings
+between signals and destinations). All are **plain JSON arrays** with
+disable support.
 
-Alert Signal Schema
-~~~~~~~~~~~~~~~~~~~
+Alert Signal Object Schema
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. list-table:: Fields
-   :header-rows: 1
+- ``uuid`` (string, required)
+- ``name`` (string, required)
+- ``disabled`` (boolean, optional)
+- ``evalMode`` (string, required) – one of:
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``uuid``
-     - string
-     - Auto
-     - Unique identifier
-   * - ``name``
-     - string
-     - Yes
-     - Display name
-   * - ``disabled``
-     - bool
-     - No
-     - Signal disabled (default: false)
-   * - ``source.unit``
-     - string
-     - Yes
-     - I/O unit UUID
-   * - ``source.signal``
-     - string
-     - Yes
-     - I/O signal UUID
-   * - ``evalMode``
-     - string
-     - Yes
-     - One of: ``binary``, ``thresholds``, ``counter``, ``cycles``
-   * - ``evalParams``
-     - object
-     - Yes
-     - Mode-specific parameters (see below)
-   * - ``severity``
-     - string
-     - No
-     - One of: ``none``, ``low``, ``medium``, ``high``
-   * - ``category``
-     - string
-     - No
-     - Free-text category
-   * - ``cycleTime``
-     - int
-     - Yes (counter/cycles)
-     - Watch window in milliseconds
-   * - ``stateTransition``
-     - object
-     - No
-     - Transition delays
+  - ``"binary"``
+  - ``"thresholds"``
+  - ``"counter"``
+  - ``"cycles"``
 
-``evalParams`` by mode:
+- ``evalParams`` (object, required):
 
-.. list-table:: Binary mode
-   :header-rows: 1
+  - For ``binary``: ``lowActive`` (boolean)
+  - For ``thresholds``: ``comparison`` (string: ``"above"``,
+    ``"aboveOrEqual"``, ``"below"``, ``"belowOrEqual"``, ``"equal"``,
+    ``"insideRange"``, ``"outsideRange"``), ``lowerThreshold`` (number),
+    ``upperThreshold`` (number, for range comparisons)
+  - For ``counter``: ``counterStepSize`` (number)
+  - For ``cycles``: ``pulseThreshold`` (number)
 
-   * - Field
-     - Type
-     - Description
-   * - ``lowActive``
-     - bool
-     - If true, 0 triggers alarm
+- ``source`` (object, required):
 
-.. list-table:: Thresholds mode
-   :header-rows: 1
+  - ``unit`` (string) – source I/O unit UUID
+  - ``signal`` (string) – source I/O signal UUID
 
-   * - Field
-     - Type
-     - Description
-   * - ``comparison``
-     - string
-     - ``above``, ``aboveOrEqual``, ``below``, ``belowOrEqual``, ``equal``, ``insideRange``, ``outsideRange``
-   * - ``lowerThreshold``
-     - double
-     - Lower threshold value
-   * - ``upperThreshold``
-     - double
-     - Upper threshold value (for range comparisons)
+- ``cycleTime`` (number, optional) – timeout in seconds for counter/cycles
+  modes
+- ``stateTransition`` (object, optional):
 
-.. list-table:: Counter/Cycles mode
-   :header-rows: 1
+  - ``alarmDelayEnabled`` (boolean)
+  - ``alarmDelay`` (number, seconds)
+  - ``okDelayEnabled`` (boolean)
+  - ``okDelay`` (number, seconds)
 
-   * - Field
-     - Type
-     - Description
-   * - ``counterStepSize``
-     - double
-     - Expected increment (counter mode)
-   * - ``pulseThreshold``
-     - double
-     - Pulse count threshold (cycles mode)
+- ``severity`` (string, optional) – ``"none"``, ``"low"``, ``"medium"``,
+  ``"high"``
+- ``category`` (string, optional) – free-text category label
 
-``stateTransition``:
+Alert Destination Object Schema
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. list-table::
-   :header-rows: 1
+- ``uuid`` (string, required)
+- ``name`` (string, required)
+- ``disabled`` (boolean, optional)
+- ``type`` (string, required) – one of: ``"email"``, ``"sms"``, ``"webhook"``,
+  ``"app"``, ``"iosignal"``, ``"mqtt"``, ``"vmetrics"``
+- Type-specific sub-objects:
 
-   * - Field
-     - Type
-     - Description
-   * - ``alarmDelayEnabled``
-     - bool
-     - Enable alarm delay
-   * - ``alarmDelay``
-     - int
-     - Delay in seconds before transitioning to ALARM
-   * - ``okDelayEnabled``
-     - bool
-     - Enable OK delay
-   * - ``okDelay``
-     - int
-     - Delay in seconds before transitioning to OK
+  - ``email``: ``recipients`` (string, comma-separated), ``subject`` (string),
+    ``body`` (string)
+  - ``sms``: ``recipients`` (string), ``text`` (string)
+  - ``webhook``: ``url`` (string), ``body`` (string), ``method`` (string:
+    ``"GET"``, ``"POST"``, ``"PUT"``, ``"DELETE"``)
+  - ``app``: ``appId`` (string)
+  - ``iosignal``: ``unit`` (string), ``signal`` (string)
+  - ``mqtt``: ``brokerAddress`` (string), ``brokerPort`` (integer),
+    ``topic`` (string), ``data`` (string)
+  - ``vmetrics``: ``metricName`` (string)
 
-.. code-block:: json
-   :caption: Example alert signal (thresholds)
+  Placeholder tokens available in text fields: ``{{NAME}}``, ``{{STATE}}``,
+  ``{{VALUE}}``, ``{{SEVERITY}}``, ``{{CATEGORY}}``, ``{{CLASSIFICATION}}``,
+  ``{{ID}}``, ``{{SOURCENAME}}``, ``{{SOURCEVALUE}}``, ``{{SOURCELOCATION}}``,
+  ``{{HOSTNAME}}``, ``{{DEVICENAME}}``, ``{{DEVICELOCATION}}``
 
-   {
-       "name": "High Temperature",
-       "source": {"unit": "unit-aaa", "signal": "sig-temp1"},
-       "evalMode": "thresholds",
-       "evalParams": {
-           "comparison": "above",
-           "lowerThreshold": 80
-       },
-       "severity": "high",
-       "category": "Temperature",
-       "stateTransition": {
-           "alarmDelayEnabled": true,
-           "alarmDelay": 30,
-           "okDelayEnabled": false
-       }
-   }
-
-Alert Destination Schema
+Alert Rule Object Schema
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. list-table:: Common fields
-   :header-rows: 1
+- ``uuid`` (string, required)
+- ``name`` (string, required)
+- ``disabled`` (boolean, optional)
+- ``alertSignals`` (array, required) – array of ``{ "uuid": "<signal-uuid>" }``
+  objects, or ``[{ "uuid": "*" }]`` to match all signals
+- ``destinations`` (array, required) – array of ``{ "uuid":
+  "<destination-uuid>" }`` objects
+- ``triggers`` (object, required):
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``uuid``
-     - string
-     - Auto
-     - Unique identifier
-   * - ``name``
-     - string
-     - Yes
-     - Display name
-   * - ``disabled``
-     - bool
-     - No
-     - Destination disabled (default: false)
-   * - ``type``
-     - string
-     - Yes
-     - One of: ``email``, ``sms``, ``webhook``, ``app``, ``iosignal``, ``mqtt``, ``vmetrics``
+  - ``ok`` (boolean) – trigger on OK state
+  - ``alarm`` (boolean) – trigger on alarm state
 
-Type-specific fields:
+- ``severityLevels`` (object, required):
 
-.. list-table:: Email
-   :header-rows: 1
+  - ``all`` (boolean) – match all severities
+  - ``none`` (boolean) – include "no severity"
+  - ``low`` (boolean)
+  - ``medium`` (boolean)
+  - ``high`` (boolean)
 
-   * - Field
-     - Type
-     - Description
-   * - ``email.recipients``
-     - string
-     - Comma-separated email addresses
-   * - ``email.subject``
-     - string
-     - Subject with placeholders
-   * - ``email.body``
-     - string
-     - Body with placeholders
+- ``repetition`` (integer, optional) – re-notification interval in minutes
+  (0 or omitted = no repetition)
 
-.. list-table:: SMS
-   :header-rows: 1
+Endpoints
+~~~~~~~~~
 
-   * - Field
-     - Type
-     - Description
-   * - ``sms.recipients``
-     - string
-     - Comma-separated phone numbers
-   * - ``sms.text``
-     - string
-     - Message with placeholders
+Alert Signals
+^^^^^^^^^^^^^^^
 
-.. list-table:: Webhook
-   :header-rows: 1
+- ``GET /api/v1/alerting/signals`` – list
+- ``GET /api/v1/alerting/signals/{uuid}`` – get one
+- ``POST /api/v1/alerting/signals`` – create
+- ``PUT /api/v1/alerting/signals/{uuid}`` – modify
+- ``DELETE /api/v1/alerting/signals/{uuid}`` – delete
+- ``PUT /api/v1/alerting/signals/disable/{uuid}`` – enable/disable
 
-   * - Field
-     - Type
-     - Description
-   * - ``webhook.url``
-     - string
-     - Target URL with placeholders
-   * - ``webhook.method``
-     - string
-     - HTTP method: GET, POST, PUT, DELETE
-   * - ``webhook.body``
-     - string
-     - Request body with placeholders
+Alert Destinations
+^^^^^^^^^^^^^^^^^^^^
 
-.. list-table:: App
-   :header-rows: 1
+- ``GET /api/v1/alerting/destinations`` – list
+- ``GET /api/v1/alerting/destinations/{uuid}`` – get one
+- ``POST /api/v1/alerting/destinations`` – create
+- ``PUT /api/v1/alerting/destinations/{uuid}`` – modify
+- ``DELETE /api/v1/alerting/destinations/{uuid}`` – delete
+- ``PUT /api/v1/alerting/destinations/disable/{uuid}`` – enable/disable
 
-   * - Field
-     - Type
-     - Description
-   * - ``app.appId``
-     - string
-     - Target application ID
+Alert Rules
+^^^^^^^^^^^^^
 
-.. list-table:: I/O Signal
-   :header-rows: 1
+- ``GET /api/v1/alerting/rules`` – list
+- ``GET /api/v1/alerting/rules/{uuid}`` – get one
+- ``POST /api/v1/alerting/rules`` – create
+- ``PUT /api/v1/alerting/rules/{uuid}`` – modify
+- ``DELETE /api/v1/alerting/rules/{uuid}`` – delete
+- ``PUT /api/v1/alerting/rules/disable/{uuid}`` – enable/disable
 
-   * - Field
-     - Type
-     - Description
-   * - ``iosignal.unit``
-     - string
-     - Target I/O unit UUID
-   * - ``iosignal.signal``
-     - string
-     - Target I/O signal UUID
+All alerting endpoints require **SystemAdministrator** authentication.
 
-.. list-table:: MQTT
-   :header-rows: 1
 
-   * - Field
-     - Type
-     - Description
-   * - ``mqtt.brokerAddress``
-     - string
-     - MQTT broker hostname
-   * - ``mqtt.brokerPort``
-     - int
-     - MQTT broker port (default 1883)
-   * - ``mqtt.topic``
-     - string
-     - Topic with placeholders
-   * - ``mqtt.data``
-     - string
-     - Payload with placeholders
+Licensing
+---------
 
-.. list-table:: VictoriaMetrics
-   :header-rows: 1
+.. _licensing:
 
-   * - Field
-     - Type
-     - Description
-   * - ``vmetrics.metricName``
-     - string
-     - Metric name with placeholders
+License management for the SIINEOS platform and third-party applications.
 
-Placeholders available in all destination text fields:
+Endpoints
+~~~~~~~~~
 
-.. list-table:: Placeholders
-   :header-rows: 1
+GET /api/v1/licensing/licenses
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   * - Placeholder
-     - Description
-   * - ``{{NAME}}``
-     - Alert signal name
-   * - ``{{STATE}}``
-     - Current state ("OK" or "ALARM")
-   * - ``{{VALUE}}``
-     - State as numeric (0=OK, 1=ALARM)
-   * - ``{{SEVERITY}}``
-     - Severity name (none/low/medium/high)
-   * - ``{{CATEGORY}}``
-     - Alert category
-   * - ``{{CLASSIFICATION}}``
-     - Severity classification (unknown/info/warning/critical)
-   * - ``{{ID}}``
-     - Alert signal UUID
-   * - ``{{SOURCENAME}}``
-     - Source I/O signal name
-   * - ``{{SOURCEVALUE}}``
-     - Current source measurement value
-   * - ``{{SOURCELOCATION}}``
-     - Source I/O unit location
-   * - ``{{HOSTNAME}}``
-     - Device hostname
-   * - ``{{DEVICENAME}}``
-     - Device description name
-   * - ``{{DEVICELOCATION}}``
-     - Device location
+List all installed licenses.
 
-Alert Rule Schema
-~~~~~~~~~~~~~~~~~
+- **Authentication:** none
+- **Response ``200 OK``** – JSON array:
 
-.. list-table:: Fields
-   :header-rows: 1
+  .. code-block:: json
 
-   * - Field
-     - Type
-     - Required
-     - Description
-   * - ``uuid``
-     - string
-     - Auto
-     - Unique identifier
-   * - ``name``
-     - string
-     - Yes
-     - Rule name
-   * - ``disabled``
-     - bool
-     - No
-     - Rule disabled (default: false)
-   * - ``alertSignals``
-     - array
-     - Yes
-     - Array of ``{"uuid": "<signalUuid>"}`` or ``[{"uuid": "*"}]`` for all
-   * - ``destinations``
-     - array
-     - Yes
-     - Array of ``{"uuid": "<destinationUuid>"}``
-   * - ``triggers.ok``
-     - bool
-     - No
-     - Trigger on OK state (default: false)
-   * - ``triggers.alarm``
-     - bool
-     - No
-     - Trigger on ALARM state (default: true)
-   * - ``severityLevels.all``
-     - bool
-     - No
-     - Match all severity levels
-   * - ``severityLevels.none``
-     - bool
-     - No
-     - Match "none" severity
-   * - ``severityLevels.low``
-     - bool
-     - No
-     - Match "low" severity
-   * - ``severityLevels.medium``
-     - bool
-     - No
-     - Match "medium" severity
-   * - ``severityLevels.high``
-     - bool
-     - No
-     - Match "high" severity
-   * - ``repetition``
-     - int
-     - No
-     - Repeat interval in minutes (0 or -1 = no repeat)
+    [
+      {
+        "id": "lic-uuid-1",
+        "productId": "de.inhub.siineos",
+        "productName": "SIINEOS Hub",
+        "productVersion": "1.2.3",
+        "productSize": 512,
+        "valid": true,
+        "validFrom": "2024-01-01",
+        "validUntil": "2027-01-01",
+        "licensee": "ACME Corp"
+      }
+    ]
 
-.. code-block:: json
-   :caption: Example alert rule
+POST /api/v1/licensing/licenses
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   {
-       "name": "Critical Temperature Alerts",
-       "alertSignals": [{"uuid": "sig-uuid-1"}],
-       "destinations": [
-           {"uuid": "dest-email-1"},
-           {"uuid": "dest-sms-1"}
-       ],
-       "triggers": {"ok": false, "alarm": true},
-       "severityLevels": {
-           "all": false,
-           "none": false,
-           "low": false,
-           "medium": true,
-           "high": true
-       },
-       "repetition": 30
-   }
+Import a license by uploading a license certificate file.
+
+- **Authentication:** SystemAdministrator
+- **Request body** – raw binary license certificate file (max 100000 bytes).
+  The server parses the certificate and extracts license metadata internally.
+  **No JSON is sent by the client.**
+- **Responses:**
+
+  - ``200 OK`` – body is JSON with the imported license metadata:
+
+    .. code-block:: json
+
+      {
+        "id": "lic-uuid-1",
+        "productId": "de.inhub.siineos",
+        "productName": "SIINEOS Hub",
+        "productVersion": "1.2.3",
+        "productSize": 512,
+        "valid": true,
+        "validFrom": "2024-01-01",
+        "validUntil": "2027-01-01",
+        "licensee": "ACME Corp"
+      }
+
+  - ``400 Bad Request`` – body too large
+  - ``409 Conflict`` – a license with the same ID is already installed
+  - ``415 Unsupported Media Type`` – the certificate is not valid
+  - ``422 Unprocessable Entity`` – the certificate is valid but the license
+    is not accepted (e.g. expired)
+
+DELETE /api/v1/licensing/licenses/{licenseId}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Remove a license.
+
+- **Authentication:** SystemAdministrator
+- **Path parameter:** ``licenseId`` (string)
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``404 Not Found`` – license not found
+  - ``500 Internal Server Error`` – removal failed
+
+
+Apps
+----
+
+.. _apps:
+
+Application control endpoints for managing installed apps on the hub.
+
+Endpoints
+~~~~~~~~~
+
+PUT /api/v1/apps/{appId}/control/{controlProperty}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set a control property on an app.
+
+- **Authentication:** SystemAdministrator
+- **Path parameters:**
+
+  - ``appId`` (string) – application identifier
+  - ``controlProperty`` (string) – one of: ``"enabled"``, ``"debug"``,
+    ``"trace"``
+
+- **Request body** – JSON boolean (max 10 bytes)
+
+  Example: ``true``
+
+- **Responses:**
+
+  - ``200 OK`` – empty body
+  - ``400 Bad Request`` – body too large or invalid JSON
+  - ``404 Not Found`` – unknown control property
+
+
+Ping / Health
+-------------
+
+.. _ping:
+
+GET /api/v1/ping
+~~~~~~~~~~~~~~~~
+
+Health-check endpoint.
+
+- **Authentication:** none
+- **Response ``200 OK``** – empty body
 
 
 Error Handling
 --------------
 
-Standard Error Responses
-------------------------
+The API uses standard HTTP status codes. Error responses generally have an
+empty body or a short plain-text message.
 
-.. list-table:: HTTP status codes
-   :header-rows: 1
+Status Code Reference
+~~~~~~~~~~~~~~~~~~~~~
 
-   * - Status Code
-     - Meaning
-     - Typical Cause
-   * - ``400 Bad Request``
-     - Malformed request
-     - Body too large, missing/invalid fields, invalid parameters
-   * - ``401 Unauthorized``
-     - No or invalid credentials
-     - Missing token, expired token, invalid refresh token
-   * - ``403 Forbidden``
-     - Insufficient permissions
-     - Token valid but role is not SystemAdministrator
-   * - ``404 Not Found``
-     - Resource does not exist
-     - Invalid UUID, unknown endpoint
-   * - ``406 Not Acceptable``
-     - Requested action not possible
-     - Invalid/expired license import
-   * - ``409 Conflict``
-     - Resource conflict
-     - Duplicate login name, duplicate license ID
-   * - ``422 Unprocessable Entity``
-     - Unparseable content
-     - Malformed license file
-   * - ``500 Internal Server Error``
-     - Server-side failure
-     - I/O errors, service failures
+- ``400 Bad Request`` – malformed request body, missing required fields,
+  body exceeds size limit, invalid parameter values, or a business-rule
+  violation (e.g. deleting the protected admin account).
 
-Response Format
----------------
+  Typical body: empty string or a short message such as
+  ``"upload file size too small"`` or ``"body length limit exceeded"``.
 
-**Successful responses:**
+- ``401 Unauthorized`` – missing, malformed, or expired access token; or
+  invalid credentials during login.
 
-- ``200 OK`` – body contains JSON, plain text, or binary data depending
-  on the endpoint.
-- ``202 Accepted`` – operation accepted but not yet complete (e.g.,
-  time-series label fetching in progress).
+  Typical body: ``"Authentication required"`` or empty.
 
-**Error responses:**
+- ``403 Forbidden`` – valid token but insufficient role (e.g. a non-admin
+  user accessing an admin-only endpoint), or session ID mismatch.
 
-- Body is typically an empty string ``""`` or a short plain-text error
-  message.
-- No standard JSON error envelope is used.
+  Typical body: ``"Admin privileges required"`` or
+  ``"Invalid access token"``.
 
-.. code-block:: http
-   :caption: Example error responses
+- ``404 Not Found`` – the requested resource (user, unit, signal, license,
+  session, etc.) does not exist.
 
-   HTTP/1.1 400 Bad Request
-   Content-Length: 27
+  Typical body: empty string.
 
-   upload file size too small
+- ``409 Conflict`` – a resource with the same unique key already exists
+  (e.g. duplicate user login name, duplicate license ID, provider ID
+  mismatch on unit config write).
 
-   HTTP/1.1 401 Unauthorized
-   Content-Length: 25
+  Typical body: empty string or the conflicting value.
 
-   Authentication required
+- ``415 Unsupported Media Type`` – the uploaded file is not a valid license
+  certificate.
 
-   HTTP/1.1 403 Forbidden
-   Content-Length: 25
+- ``422 Unprocessable Entity`` – the request is syntactically correct but
+  semantically invalid (e.g. license certificate is well-formed but the
+  license is expired or not accepted).
 
-   Admin privileges required
+- ``500 Internal Server Error`` – an unexpected server-side failure (e.g.
+  file I/O error, external service failure, database write failure).
 
-   HTTP/1.1 404 Not Found
-   Content-Length: 0
+  Typical body: empty string.
 
+- ``501 Not Implemented`` – the requested operation is not supported by the
+  target unit or signal.
 
-Caveats
--------
+  Typical body: ``"Not implemented"``.
 
-- The ``password`` field is never exposed in user GET responses.
-- All UUIDs are 32-character lowercase hex strings without dashes.
-- The ``hubadmin`` user account cannot be deleted.
-- Time-series labels are fetched asynchronously; the first request for a
-  new time range returns ``202 Accepted`` and subsequent requests return
-  data once fetching completes.
-- The CSV export endpoint uses chunked transfer encoding and streams
-  data in real time.
-- The system update upload is chunked; the server automatically initiates
-  installation when the total received byte count matches the declared
-  size.
-- Configuration writes are persisted to a local SQLite database.
+General Notes
+~~~~~~~~~~~~~
+
+- All JSON request bodies have a maximum size of **1 MiB** unless otherwise
+  stated (e.g. 4 MiB for unit config writes, 128 KiB for icon uploads,
+  256 MiB for update bundle chunks).
+- UUIDs in the API are 32-character hexadecimal strings **without dashes**.
+- Timestamps in query parameters for the time-series API are in
+  **milliseconds** since epoch (13 digits).
+- The ``"data"`` sub-key pattern applies exclusively to configuration-object
+  endpoints. Collection endpoints (users, firewall rules, alerting, I/O
+  connections, synthetic signals, Modbus registers) use plain JSON objects
+  without the wrapper.
+
