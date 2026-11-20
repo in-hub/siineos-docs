@@ -1,0 +1,52 @@
+SIINEOS 1.1.1
+=============
+
+* Release date: 2019-11-28
+
+SIINEOS
+-------
+
+* General:
+	- Added packages openvpn and nftables
+	- Added basic firewall rules to block inbound traffic on wwan0
+	- Dropped unused ODBC libraries
+* Kernel:
+	- Updated to 4.19.86
+	- Enabled TUN support required for OpenVPN
+	- Enabled nftables IPv6 support
+	- Updated firmware to e8a0f4c9314754d8b2cbe9840357d88a861c438a
+* Docker:
+	- Updated to 19.03.5
+* FreeTDS:
+	- Updated to 1.1.21 for improved MS SQL server support
+* Debian security updates:
+	- mosquitto: https://www.debian.org/security/2019/dsa-4570
+
+InCore
+------
+
+* Foundation:
+	- MobileNetworkInterface: improved initialization and SIM card handling
+	- OpenVpnClientService: add initial implementation
+* CloudOfThings:
+	- CloudOfThingsEventDatabase: fix datatype of `severity` field
+* Database:
+	- Database: added `close()` method
+	- Database: added `closeOnConnectionError` property
+	- Database: skip type detection on context changes to improve performance and eliminate unnecessary queries
+	- Database: use unique connection names internally
+	- DatabaseTable: catch ODBC connection errors and forward to Database instance
+* IO:
+	- FtdiI2cBus: support all 16 GPIO lines
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 4.19.86.1
+* Qt 5.12.6.1
+* InCore 1.1.1
+* RAUC 1.2.1
+* Docker 19.03.5.1
+* ModemManagerQt 5.64.0.1
+* Solid 5.64.0.1

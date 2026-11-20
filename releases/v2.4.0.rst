@@ -1,0 +1,98 @@
+SIINEOS 2.4.0
+=============
+
+* Release date: 2021-08-02
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.4.0.raucb>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - Added *light edition* without Docker support for reduced update file download and installation times
+    - Added support for IMX6ULL-based platforms including transparent MTD storage support
+    - Added PostgreSQL support to InCore.Database module
+    - The OPC UA server can now load custom interface and type definitions from XML nodeset files
+    - Improved MSSQL server 2019 support
+    - Migrated WebApp Engine to Qt 6.2
+    - Added dynamic language translation support to InCore
+* General:
+    - Base system updated to Debian GNU/Linux 10.10 release
+    - Added MTD utilities
+    - Migrated build system to CMake and prepared Qt 6 support
+* Kernel:
+    - Updated to 5.4.137
+    - Added support for IMX6ULL-based platforms (DT, MTD, GPMI NAND, UBIFS)
+    - Dropped unused DMA CMA support on the GM200 platform
+    - Supply non-essential non-driver components such as NFT and Crypto as kernel modules
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 20.10.7 / containerd 1.4.9
+    - FreeTDS 1.3.0
+    - InCore 2.4.0
+    - WebApp Engine 2.4.0
+    - Qt 5.12.11.6
+* Debian security updates:
+    - krb5: https://www.debian.org/security/2021/dsa-4944
+    - libuv1: https://www.debian.org/security/2021/dsa-4936
+    - lz4: https://www.debian.org/security/2021/dsa-4919
+    - nettle: https://www.debian.org/security/2021/dsa-4933
+    - nginx: https://www.debian.org/security/2021/dsa-4921
+    - systemd: https://www.debian.org/security/2021/dsa-4942
+
+InCore
+------
+
+* Foundation:
+    - Application: initialize ``language``/``country`` properties based on system settings
+    - Application: added support for automatically loading translation files based on ``language`` property
+    - Application: added support for dynamic language change (especially useful in WebApp Engine)
+    - ConfigurationObject: added signals ``abouToBeUpdated()`` and ``updated()``
+    - DataObjectView: added ``SpinBox`` widget enumeration value
+    - DataObjectView: added ``range``, ``stepSize`` and ``decimals`` properties
+    - Measurement: added ``Unit`` enumeration and added support for corresponding enumeration values in ``unit`` property
+    - MobileNetworkInterface: apply IP configuration as soon as either IPv4 or IPv6 configuration is available
+    - MobileNetworkInterface: added support for disabling IP connection via the new ``establishIpConnection`` property
+    - Object: added ``deserializeProperties()`` method
+    - Object: fixed deserialization of enumeration values
+    - List: optimize conversion from reference
+    - MeasurementView: move ``color`` property to parent object ``DataObjectView``
+    - Repeater: cache reference to List internally to optimize performance and avoid repetetive warnings
+    - Resource: refactoring to a ``ByteArray`` object
+    - Resource: added support for loading resources remotely when used in WebApp Engine
+* CloudOfThings:
+    - CloudOfThingsClient: don't use devel templates any longer
+    - CloudOfThingsTransport: added ``SslError`` error and ``sslErrorOccurred()`` signal
+* Database:
+    - Database: renamed ``InvalidDatabase`` error to ``InvalidNameError``
+    - Database: removed ``InvalidIdError`` and requirement for a non-empty object ID
+    - DatabaseQuery: added ``orderByNames`` property
+    - LocalDatabase: use ``name`` property for constructing filename and fall back to object ID
+    - MySQLDatabase: removed duplicate ``databaseName`` property (use ``Database.name`` instead)
+    - PostgreSQLDatabase: added PostgreSQL support
+* Modbus:
+    - ModbusRegister: fixed reading/receiving arrays of 64 bit signed/unsigned integers
+* Mqtt:
+    - MqttClient: reconnect automatically on changed properties
+    - MqttClient: fixed auto connect with Websockets-based connections
+    - MqttClient: fixed detection of closed/aborted MQTT connections with Websockets
+    - MqttClient: publish auto-converted data if ``dataType`` property of topic is set
+    - MqttTopic: supply UTF8 string in ``data`` property when setting ``dataType`` to ``DataObject.String``
+    - MqttWildcardSubscription: fixed type registration of property map
+    - MqttWildcardSubscription: added ``dataType`` property
+    - MqttWildcardSubscription: added ``Mode`` enumeration, and ``mode`` property
+    - MqttWildcardSubscription: added ``valueReceived()`` signal
+    - MqttWildcardSubscription: fixed emission of ``dataChanged()`` signal
+* OpcUa:
+    - OpcUaNodeAttribute: added enumeration namespace to allow calling ``OpcUaClientNode.getServerTimestamp()`` and ``OpcUaClientNode.getSourceTimestamp()``
+    - OpcUaServer: added support for dynamically loading XML nodeset files via new ``nodeSets`` property
+    - OpcUaServer: warn on missing timestamps in client requests instead of rejecting connection
+    - OpcUaServerFolderNode: added new object for easy modelling of UA folder objects
+    - OpcUaServerNode: added support for implementing nodes with custom types via the new ``typeDefinition`` property
+    - OpcUaServerNodeId: added new object allowing to resolve namespace indexes by namespace URIs automatically
+    - OpcUaServerValueNode: added support for Engineering Units based on ``Measurement.Unit`` (implements OPC UA Part 8 / Data Access / EUInformation) via the new ``unit`` property
+* WebApp:
+    - Migrated from Qt 5.15 to 6.2
+    - Fixed ``WebAppCore.downloadFile()`` to keep application running
+    - Added support for loading/saving local files via ``WebApPCore.loadDataFromLocalFile()`` and ``WebAppCore.saveDataToLocalFile()``
+    - Added support for fetching files remotely via ``Resource`` object
+    - Added ``ConfigurationItem``, ``Storage`` and ``Timer`` objects

@@ -1,0 +1,35 @@
+SIINEOS 2.7.7
+=============
+
+* Release date: 2023-08-04
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.7.7.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.7.7.raucb>`_
+
+SIINEOS
+-------
+
+* Changes:
+    - SMAC: fixed regression in 2.7.6 where the Modbus type could not be configured
+    - SMAC: fixed bug where signed integers were not calculated correctly from Modbus registers
+    - SMAC: fixed endianess handling for certain data types of Modbus registers – a manual change of the byte order setting for Modbus registers configured with SIINEOS 2.7.6 or earlier may be required
+    - SMAC: improved handling of invalid or undefined expressions for signal processing and synthetic signals
+    - SMAC: simplified user interface for temperature and humidity signals of HUB-GM100/IM18-CCM60
+    - SMAC: fixed port forwarding if destination port was specified explicitly
+    - SMAC: properly close serial port when disabling or removing a Modbus RTU client
+    - SMAC: properly disconnect from MQTT broker when disabling or removing an MQTT client
+    - SMAC: added error indicating tooltips to I/O units
+    - SMAC: show Modbus type in address label when hovering Modbus client I/O units
+    - InCore: ``NftAddressTranslation``: added ``natDestinationPort`` property
+    - FlexPlorer: fixed visual size of counters to properly fit in the layout
+    - OPC UA Server: properly handle data type changes of signals and synchronize value nodes accordingly
+    - Bootloader: update MAC address environment variables on every boot
+* Components:
+    - Bootloader 2021.07.3 (not installed/updated automatically)
+    - Docker 24.0.5 / containerd 1.6.22
+    - FreeTDS 1.3.18
+    - InCore 2.7.7
+    - Qt 5.15.10.3 with SQLite 3.42.0
+    - open62541 1.3.6-8
+    - RAUC 1.10
+    - WebApp Engine 2.7.7
+* Debian security updates: <none>

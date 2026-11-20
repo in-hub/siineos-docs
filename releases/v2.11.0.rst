@@ -1,0 +1,66 @@
+SIINEOS 2.11.0
+===============
+
+* Release date: 2026-11-XX
+* `Standard update bundle download for ARMHF <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.11.0.raucb>`_
+* `Standard update bundle download for ARM64 <https://download.inhub.de/siineos/updates/siineos-standard-arm64-update-v2.11.0.raucb>`_
+
+New features / major changes
+----------------------------
+
+- Added CAN bus support
+- Added CANopen node support
+- Added output signal for controlling the CAN power supply of HUB-GM200 devices
+- Added integrated OPC UA server as I/O endpoint, superseding the former OPC UA server app
+- OPC UA server supports encrypted connections (security policies Basic256Sha256, Aes128Sha256RsaOaep and Aes256Sha256RsaPss), verification of client certificates as well as anonymous, username/password and user certificate authentication
+- OPC UA server can optionally publish system metrics (CPU load/usage, memory and storage usage) and use identifiers instead of names as BrowseName
+- Added HTTP API endpoints for retrieving I/O units and I/O signals (``/api/v1/io/units``, ``/api/v1/io/units/<unit>/signals``)
+- Revised CSV export of time series data with chunked processing, progress display and cancellation support for large data sets
+- Retention period for VictoriaMetrics time series is now configurable
+- Migrated all SMAC components from legacy JSON-RPC API to modern HTTP API
+- Switched from session tokens to refresh/access token pattern for better security, compatibility and user experience
+- Modbus client now suports block reads for registers with common sampling interval
+- Public access to VictoriaMetrics service is now readonly
+
+Improvements
+------------
+
+- Improved LED and button control for HUB Signal devices (LED control modes, support for 6 buttons, button events are ignored for disabled I/O units/signals)
+- Improved *Performance* page by showing CPU cores with distinct colors and fixing the legend layout for devices with many cores
+- Improved loading performance of Modbus client I/O units with many I/O signals
+- Devices with Wifi networking only fall back to access point if client connection fails on boot
+
+Bugfixes
+--------
+
+- Delay VictoriaMetrics service start until system clock is synchronized / loaded from RTC to fix data loss due to VictoriaMetrics aggressive cleanup mechanism
+- Fixed issue where MQTT subscriptions were lost on interrupted Websocket connetions
+- Fixed potentially lost events when detecting low-level GPIO edges with high frequencies
+- Improved GPIO error handling
+- Fixed parameter mapping of digital frequencies for HUB-VM102 I/O units
+- Fixed configuration loading for dynamically created I/O signals (e.g. HUB Signal buttons and LEDs)
+- Fixed potentially lost IO-Link device parameter writes when I/O signals are recreated due to configuration changes
+- Fixed I/O signals with data type *String* not being displayed as is in the I/O signals list
+- Fixed app trace control on the app configuration page
+- Fixed initial automatic time synchronization on the *Date & time* configuration page
+- Fixed user sessions becoming invalid after changing the system date/time
+- Orphaned user sessions are now cleaned up on startup
+
+Miscellaneous changes
+---------------------
+
+- The OPC UA server app is deprecated and will be removed in a future release. Please migrate to the integrated OPC UA server I/O endpoint.
+
+Components
+----------
+
+- Bootloader 2024.04.2 (not installed/updated automatically)
+- Linux Kernel 6.18.64
+- Docker 29.10.0 / containerd 2.3.5
+- FreeTDS 1.5.18
+- InCore 2.11.0
+- Qt 5.15.19 with SQLite 3.54.1
+- open62541 1.4.22-1
+- RAUC 1.15.2
+- VictoriaMetrics 1.156.0
+- WebApp Engine 2.11.0

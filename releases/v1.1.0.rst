@@ -1,0 +1,56 @@
+SIINEOS 1.1.0
+=============
+
+* Release date: 2019-11-12
+
+SIINEOS
+-------
+
+* General:
+	- Dropped curl command in favour of `incore-cli download`
+	- Added `update-siineos` script
+	- Made ModemManager ignore FT232 devices
+	- Changed filter policy of ModemManager to default
+	- Replaced USB modem greylist udev rules with custom blacklist
+	- Enabled support for legacy RSA host keys
+* Kernel:
+	- Updated to 4.19.83
+	- Skip LPJ calibration on boot
+* Updated RAUC to 1.2
+* Debian security updates: <none>
+
+InCore
+------
+
+* Foundation:
+	- Object: allow passing argument to `toJson()`
+	- Object: made `toJson()` output human-readable strings
+	- SystemService: start/stop service when updating `enabled` property dynamically
+	- NetworkInterface: added `networkAddress` property 
+	- MobileNetworkInterface: added configuration views
+	- Select, Gather, ReduceList, TransformList: expose parent properties in expression context
+	- List: optimized Repeater/Gather access for aliased list properties
+	- MobileNetworkInterface: improved initialization order when unlocking SIM cards via PIN
+* Database:
+	- DatabaseFieldOptions: added initial implementation
+	- Database: added `debugSqlQueries` property
+	- MSSQLDatabase: added support for MARS connections
+	- DatabaseTable: added `SubmitError` error
+	- DatabaseTable: properly convert DateTime objects
+	- DatabaseTable: added `structure` property allowing to create tables with specific data objects
+	- DatabaseTable: added `defaultFieldOptions` property
+* Modbus:
+	- ModbusClient: improved internal object management to free resources when deleting instances created by Repeater
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 4.19.83.1
+* Qt 5.12.6.1
+* InCore 1.1.0
+* RAUC 1.2.1
+* Docker 19.03.4.1
+* ModemManagerQt 5.64.0.1
+* Solid 5.64.0.1
+

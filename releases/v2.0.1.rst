@@ -1,0 +1,51 @@
+SIINEOS 2.0.1
+=============
+
+* Release date: 2020-04-02
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-armhf-update-v2.0.1.raucb>`_
+* `Image download <https://download.inhub.de/siineos/images/siineos-armhf-disk-v2.0.1.img.gz>`_
+
+SIINEOS
+-------
+
+* General:
+	- Updated FreeTDS to 1.1.26
+	- Updated WPA to 2.9.12.1
+* Kernel:
+	- Updated to 5.4.30
+* Debian security updates:
+	- icu: https://www.debian.org/security/2020/dsa-4646
+
+InCore
+------
+
+* Foundation:
+	- Application: added `messageLoggingPattern` property
+	- Application: added `messageLoggingFilterRules` property
+	- Core: improved debug messages on global errors
+	- FifoBuffer: optimized emissions of `inputChanged()`/`outputChanged()` signals
+	- Gather: ignore `FifoBuffer` changes
+	- IoDevice: fixed emission of `bytesAvailableChanged()` signal
+	- IoDevice: added `readAll()` and `peekAll()` methods
+* IO:
+	- AnalogInput: fixed mode switch
+	- DigitalIO: fixed control of output GPIOs
+	- FtdiI2cBus: revised implementation to use libftdi-based MPSSE library
+	- Relay: fixed control of output GPIO
+	- SerialPort: changed base object to `IoDevice` to inherit additional functionalities
+	- Sht3x: fixed an internal initialization
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 5.4.30.1
+* Qt 5.12.8.1
+* InCore 2.0.1
+* RAUC 1.2.1
+* Docker 19.03.8.1
+* FreeTDS 1.1.26.1
+* ModemManager 1.10.9.1
+* ModemManagerQt 5.68.0.1
+* Solid 5.68.0.1
+* WPA 2.9.12.1

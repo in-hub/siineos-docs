@@ -1,0 +1,53 @@
+SIINEOS 1.0.4
+=============
+
+* Release date: 2019-10-25
+
+SIINEOS
+-------
+
+* Kernel:
+	- Updated to 4.19.80
+	- Add USB ACM driver
+* Docker:
+	- Updated to 19.03.4
+* Debian security updates: <none>
+
+InCore
+------
+
+* Foundation:
+	- Object: made `parent` property writable to allow easy reparenting of objects
+	- Polling: fixed randomly initialized caching property
+	- Repeater: added `alternativeParent` property
+	- Repeater: make delegate instances direct children of Repeater parent
+	- Select: added initial implementation allowing to select items from list easily
+	- SerialPort: added `read()`, `flush()`, `peakAll()` and `close()` methods
+	- SerialPort: added `serialNumber`, `manufacturer`, `description`, `productIdentifier` and `vendorIdentifier` properties
+	- WiredNetworkInterface: allow multiple values for address, gateway and dns
+	- WiredNetworkInterface: allow set (but ignored) values for static config when using DHCP
+* CloudOfThings:
+	- CloudOfThingsDeviceManager: dropped `client` property
+	- CloudOfThingsDeviceRegistrator: added workaround for server-side subscription bug 
+* Database:
+	- Database: added `name` property
+	- MSSQLDatabase: add `name` property to connection string if set
+	- MSSQLDatabase: add `tdsVersion` property and add to connection string if set 
+* IO:
+	- AlphasenseOpcN3: added initial implementation
+	- FtdiI2cBus: fixed initialization
+	- SerialPortManager: added initial implementation
+* Modbus:
+	- ModbusSlave: dropped `client` property again (set Object.parent or use Repeater.alternativeParent where required)
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 4.19.80.2
+* Qt 5.12.5.5
+* InCore 1.0.4
+* RAUC 1.1.3
+* Docker 19.03.4.1
+* ModemManagerQt 5.63.0.1
+* Solid 5.63.0.1

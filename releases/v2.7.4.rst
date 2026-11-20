@@ -1,0 +1,41 @@
+SIINEOS 2.7.4
+=============
+
+* Release date: 2023-06-08
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.7.4.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.7.4.raucb>`_
+
+SIINEOS
+-------
+
+* Changes:
+    - SMAC: added support for modeling an RS flip-flop with synthetic signals
+    - SMAC: added method *Sum of all values* to the aggregation step in the signal processing page
+    - SMAC: added new processing step *Delta* to the signal processing page
+    - SMAC: performance of signal aggregation processing
+    - SMAC: use `expr-eval library <https://github.com/oat-sa/expr-eval#expression-syntax>`_ for signal pre- and postprocessing steps and custom synthetic signal calculations - it's recommended to check the results of signal processing formulas and synthetic signals after the update and adopt the syntax wherever necessary
+    - SMAC: added username/password authentication support to OPC/UA client
+    - SMAC: added *Custom datatype* option to the *Measurement modelling* page, allowing to override the data type of a signal, e.g. when calculating a float value from a Modbus UINT16 register via signal processing
+    - SMAC: dropped support for configuring a global OPC/UA interface namespace manually, instead users should always specify the full node IDs for OPC/UA client signals
+    - SMAC: fixed crash when configuring Modbus registers
+    - SMAC: various minor UI tweaks and tunings
+    - InGraf: added login page for admin backend - a new user "ingrafadmin" with role "App administrator" has to be created in SMAC before logging in the first time
+    - InGraf: added SMTP settings for Grafana allowing to configure and use e-mail alertions in Grafana
+    - InGraf: added visual feedback for Grafana/Prometheus operations
+    - InCore: added username/password authentication support to `OpcUaClientConnection`
+    - InCore: fixed crash in `ModbusSlave` when receiving replies for already deleted registers
+    - InCore: added more widget types to `DataObjectView`
+* Kernel:
+    - Updated to 5.4.245
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 24.0.2 / containerd 1.6.21
+    - FreeTDS 1.3.18
+    - InCore 2.7.4
+    - Qt 5.15.9.2 with SQLite 3.42.0
+    - open62541 1.3.6-1
+    - RAUC 1.9
+    - WebApp Engine 2.7.4
+* Debian security updates:
+    - libxml2: https://www.debian.org/security/2023/dsa-5391
+    - openssl: https://www.debian.org/security/2023/dsa-5417

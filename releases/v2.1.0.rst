@@ -1,0 +1,65 @@
+SIINEOS 2.1.0
+=============
+
+* Release date: 2020-05-28
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-armhf-update-v2.1.0.raucb>`_
+* `Image download <https://download.inhub.de/siineos/images/siineos-armhf-disk-v2.1.0.img.gz>`_
+
+SIINEOS
+-------
+
+* General:
+	- Base system updated to Debian GNU/Linux 10.4 release
+	- Decreased realtime scheduling priority of InCore apps to prevent hardware driver issues
+	- Properly stop recovery InCore apps when entering development mode
+	- Made nftables firewall programmable via QML
+	- Updated FreeTDS to 1.1.40
+	- Updated RAUC to 1.3
+* Kernel:
+	- Updated to 5.4.43
+	- Added seccomp support
+* Docker:
+	- Updated to 19.03.9
+* Debian security updates:
+	- openssl: https://www.debian.org/security/2020/dsa-4661
+
+InCore
+------
+
+* Foundation:
+	- Comparator: improved support dynamic changes of the `thresholdOn` property
+	- CsvWriter: added `byteOrderMark` property
+	- DataObjectWriter: optimized internal field value submission
+	- DockerContainer: added `seccompProfile` property
+	- Measurement: heavily optimized updates of the `displayString` property improving database export performance by factor 3
+	- NftFirewall, NftTable, NftChain, NftRule: added support for configuring local nftables firewall via QML
+	- System: removed newline from `bootloaderVersion` property
+	- WebServerFilesStorage: added new storage object for storing files served by WebServerService
+* CloudOfThings:
+	- CloudOfThingsClient: always update ICCID, IMSI and IMEI properly
+	- CloudOfThingsEventWriter, CloudOfThingsMeasurementWriter: fix submission when data contains newline characters
+	- CloudOfThingsTransport: added `requestCredentialsIntervalREST` property
+* Database:
+	- Backend: modernized code and improved performance
+	- DatabaseExporter: added `chunkSize` property
+	- DatabaseExporter: added `progress`/`running` properties
+	- DatabaseExporter: added `rowFilter` property
+* IO:
+	- DigitalIO: improved `openDrainFault` property handling
+* Modbus:
+	- ModbusSlave: added `maximumBlockLength` property
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 5.4.43.1
+* Qt 5.12.9.1
+* InCore 2.1.0
+* RAUC 1.3.1
+* Docker 19.03.9.1
+* FreeTDS 1.1.40.1
+* ModemManager 1.10.9.1
+* ModemManagerQt 5.70.0.1
+* Solid 5.70.0.1
+* WPA 2.9.12.1

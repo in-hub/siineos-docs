@@ -1,0 +1,42 @@
+SIINEOS 2.2.1
+=============
+
+* Release date: 2020-08-10
+* `Update bundle download <https://download.inhub.de/siineos/updates/siineos-armhf-update-v2.2.1.raucb>`_
+* `Image download <https://download.inhub.de/siineos/images/siineos-armhf-disk-v2.2.1.img.gz>`_
+
+SIINEOS
+-------
+
+* General:
+    - Base system updated to Debian GNU/Linux 10.5 release
+    - Enabled automatic reboot 30 seconds after severe operating system or driver errors (kernel panic/oops)
+    - Updated RAUC to 1.4
+    - Use more recent internal SQLite implementation in Qt in favor of Debian's sqlite3 package
+* Kernel:
+    - Updated to 5.4.57/TI-R16
+* Debian security updates: <none>
+
+InCore
+------
+
+* Database:
+    - DatabaseFieldOptions: added support for attaching properties to arbitrary objects
+* IO:
+    - BackplaneBus: mark devices offline during reset
+    - EnergyAddonEN100: always set up physical channels even with default values
+
+Core component versions
+-----------------------
+
+* U-Boot 2019.07.4
+* Linux Kernel 5.4.57.1
+* Qt 5.12.9.4
+* InCore 2.2.1
+* RAUC 1.4.1
+* Docker 19.03.12.1
+* FreeTDS 1.2.3.1
+* ModemManager 1.10.9.1
+* ModemManagerQt 5.72.0.1
+* Solid 5.72.0.1
+* WPA 2.9.13.1

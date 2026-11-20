@@ -1,0 +1,108 @@
+SIINEOS 2.5.0
+=============
+
+* Release date: 2021-10-21
+* `Standard update bundle download <https://download.inhub.de/siineos/updates/siineos-standard-armhf-update-v2.5.0.raucb>`_
+* `Light update bundle download <https://download.inhub.de/siineos/updates/siineos-light-armhf-update-v2.5.0.raucb>`_
+
+SIINEOS
+-------
+
+* Highlights:
+    - Added Virtual Keyboard support to WebApp Engine
+    - Added QML SortFilterProxyModel support to WebApp Engine
+    - InCore apps can now control all LEDs device-independent and configure triggers
+    - I2C busses of the local device/system can now be accessed by InCore apps
+    - JSON RPC server now works with multiple services
+    - Database updates are even easier to implement thanks to the new ``DatabaseUpdate`` object
+* General:
+    - Base system updated to Debian GNU/Linux 10.11 release
+    - Added I2C tools (i2c-tools)
+    - Added GPIO tools (gpiod)
+    - Use MAC address as DHCP client identifier already when booting to match the default behavior of the ``NetworkInterface`` object
+    - Fixed automatic start of apps when installing local app bundle via ``install-apps-bundle``
+    - The realtime scheduling policy is no longer set for InCore apps to improve the performance of the interrupt-based ``EdgeDetector`` object
+* Kernel:
+    - Updated to 5.4.155
+    - Added SDMA firmware for i.MX6-based devices
+    - Added IMX2_WDT driver for i.MX-based devices
+    - Enabled extcon USB GPIO support for i.MX-based devices
+    - Refactored LED trigger support (added mtd+activitiy+netdev, removed oneshot)
+    - Improved device tree naming scheme to support more in.hub devices
+    - Added driver for the MCP2221 USB-to-UART/I2C serial converter
+* Components:
+    - Bootloader 2021.07 (not installed/updated automatically)
+    - Docker 20.10.9 / containerd 1.4.11
+    - FreeTDS 1.3.3
+    - InCore 2.5.0
+    - WebApp Engine 2.5.0
+    - Qt 5.12.12.1
+* Debian security updates:
+    - ntfs-3g: https://www.debian.org/security/2021/dsa-4971
+    - openssl: https://www.debian.org/security/2021/dsa-4963
+
+InCore
+------
+
+* Foundation:
+    - Application: added ``trapErrors`` property
+    - DataObjectWriter: added return value to the ``submit()`` method
+    - Gather, List, Repeater: improved support for objects of types defined in QML 
+    - JsonRpcClient, JsonRpcService: added ``serviceName`` property
+    - JsonRpcServer: added ``services`` property to support multiple services and replace the ``service`` property
+    - Measurement: added missing internal update of SI prefix name and factor
+    - Polling: added ``timestamp`` property
+    - System: added ``DeviceType.IM6`` enumeration value
+    - Timer: added ``msecsElapsed`` property
+* CloudOfThings:
+    - CloudOfThingsMeasurementWriter: refactoring to use MeasurementBufferDatabase and a more lightweight API
+* Database:
+    - Database: added ``ready`` property
+    - DatabaseQuery: defer execution until the ``ready`` property of the attached database table is ``true``
+    - DatabaseQuery, DatabaseSqlQuery: reset ``error`` before executing query
+    - DatabaseQuery, DatabaseSqlQuery: added return value to the ``execute()`` method
+    - DatabaseSqlQuery: update the ``lastInsertedId`` property for ``INSERT`` queries only
+    - DatabaseTable: added ``ready`` property
+    - DatabaseUpdate: added new object for simple SQL-less database updates
+    - LocalDatabase: fixed handling of the ``name`` property
+    - MeasurementDatabase, MeasurementBufferDatabase: added new object for (temporarily) storing measurement objects in a database
+* IO:
+    - AlphasenseOpcN3, SensirionHDLC, SensirionSPS30: handle dynamic changes of the ``portName`` property at runtime 
+    - AlphasenseOpcN3, SensirionHDLC: don't send requests if the ``portName`` property is empty
+    - EdgeDetector: added ``running`` property
+    - EdgeDetector: optimized cases where either rising or falling edges need to be detected only
+    - LED: added ``systemName`` property
+    - LED: added support for configuring triggers via the new ``trigger`` property, the ``networkInterfaceName`` property and the ``Trigger`` enumeration
+    - SensirionHDLC: refactoring to handle different types of Sensirion sensors generically
+    - SensirionSFM3300: added new object for the Sensirion SFM3300 mass flow meter
+    - SerialPortBus: added check for non-empty port name before opening serial port
+    - SerialPortBusNode: assign a valid instance to ``serialPort`` per default so basic parameters such as ``portName`` need to be set only
+    - SerialPortBusNode: added ``portName`` alias property allowing to use ``Select`` easily
+    - SystemI2cBus: added new object allowing access to any I2C bus on the local system (``/dev/i2c-N``)
+    - udev: extend I2C access to devices 2-9
+    - udev: refactor GPIO and LED access to support all boards/devices in a generic manner
+* Modbus:
+    - ModbusTcpClient: added ``lowDelay`` property
+    - ModbusRtuMaster: added ``turnaroundDelay`` property
+* Mqtt:
+    - MqttClient: use UTF-8 string for topic name
+    - MqttObjectPublication: added check for empty ``topicBaseName`` property in ``publish()`` method
+    - MqttObjectPublication: call ``publish()`` whenever the ``topicBaseName`` property changes
+    - MqttSubscription: call ``unsubscribe()`` when being deleted
+    - MqttWildcardSubscription: added support for depublishing retained topics
+* OpcUa:
+    - OpcUaServer: added missing nodesetLoader library
+    - OpcUaServer: updated notesetLoader library to 0.5.0
+    - OpcUaServer: fixed user authentication by properly forwarding ``OpcUaServerUser.password`` to the open62541 stack
+    - OpcUaServer: added warnings for invalid authentication settings/policies (e.g. ``anonymousLoginAllowed`` not set and no ``users`` configured or ``userLoginRequiresEncryption`` set and ``security.policies`` set to ``OpcUaServerSecurity.PolicyNone`` only)
+* WebApp:
+    - Build with latest Qt 6.2 and Emscripten SDK 2.0.32
+    - WebAppNativeCode: fixed sporadic crashes
+    - Integrated SortFilterProxyModel plugin
+    - Integrated QtVirtualKeyboard plugin
+    - Improved integration of the QtGraphicalEffects plugin
+    - Added KDE's Breeze SVG icons
+    - Fixed bug in Qt which crashed the application when reloading SVG images on source size changes via HTTP
+    - Fixed bug in Qt which broke dragging Flickable and ListView items by mouse
+    - Fixed bug in Qt which broke cursor shape updates e.g. text input cursor when hovering text input fields
+    - The ``WebAppCore`` object now inherits from the ``Application`` object to ease changing global settings such as language and country
